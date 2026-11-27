@@ -1,0 +1,6 @@
+{
+  "name": "BidCo-Author",
+  "description": "AI-powered government tender discovery, PDF analysis, eligibility checking, proposal co-authoring, and financial/risk intelligence copilot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

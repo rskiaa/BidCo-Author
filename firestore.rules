@@ -1,0 +1,704 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection validation probe
+    match /test/connection {
+      allow get: if isSignedIn();
+      allow list, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'devstar3833@gcplab.me' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOrgMember(orgId) {
+      return isVerifiedUser() && (
+        get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid ||
+        exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid))
+      );
+    }
+
+    function isOrgOwner(orgId) {
+      return isVerifiedUser() &&
+        get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid;
+    }
+
+    function hasValidMemberUids(data) {
+      return data.memberUids is list &&
+        data.memberUids.size() >= 1 &&
+        data.memberUids.size() <= 20 &&
+        data.memberUids[0] is string &&
+        data.ownerId in data.memberUids;
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'orgId', 'role', 'jobTitle', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        isNonEmptyString(data.email, 254) &&
+        isNonEmptyString(data.displayName, 120) &&
+        data.role in ['admin', 'bid_manager', 'reviewer', 'viewer'] &&
+        (!('orgId' in data) || isValidString(data.orgId, 128)) &&
+        (!('jobTitle' in data) || isValidString(data.jobTitle, 120)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrganization(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'memberUids', 'name', 'industry', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'memberUids', 'name', 'registrationNumber', 'gstin', 'panNumber',
+          'udyamNumber', 'industry', 'businessCategory', 'headquarters', 'yearsInOperation',
+          'annualTurnoverLakhs', 'netWorthLakhs', 'employeeCount', 'capabilitiesSummary',
+          'certifications', 'pastProjectsSummary', 'website', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.name, 200) &&
+        isNonEmptyString(data.industry, 120) &&
+        (!('registrationNumber' in data) || isValidString(data.registrationNumber, 100)) &&
+        (!('gstin' in data) || isValidString(data.gstin, 40)) &&
+        (!('panNumber' in data) || isValidString(data.panNumber, 40)) &&
+        (!('udyamNumber' in data) || isValidString(data.udyamNumber, 60)) &&
+        (!('businessCategory' in data) || isValidString(data.businessCategory, 120)) &&
+        (!('headquarters' in data) || isValidString(data.headquarters, 200)) &&
+        (!('yearsInOperation' in data) || (data.yearsInOperation is number && data.yearsInOperation >= 0 && data.yearsInOperation <= 200)) &&
+        (!('annualTurnoverLakhs' in data) || (data.annualTurnoverLakhs is number && data.annualTurnoverLakhs >= 0)) &&
+        (!('netWorthLakhs' in data) || (data.netWorthLakhs is number && data.netWorthLakhs >= 0)) &&
+        (!('employeeCount' in data) || (data.employeeCount is number && data.employeeCount >= 0)) &&
+        (!('capabilitiesSummary' in data) || isValidString(data.capabilitiesSummary, 5000)) &&
+        (!('certifications' in data) || (data.certifications is list && data.certifications.size() <= 25 && (data.certifications.size() == 0 || data.certifications[0] is string))) &&
+        (!('pastProjectsSummary' in data) || isValidString(data.pastProjectsSummary, 5000)) &&
+        (!('website' in data) || isValidString(data.website, 300)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTeamMember(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'email', 'displayName', 'role', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'orgId', 'ownerId', 'memberUids', 'uid', 'email', 'displayName', 'role', 'status', 'department', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        (!('uid' in data) || isValidString(data.uid, 128)) &&
+        isNonEmptyString(data.email, 254) &&
+        isNonEmptyString(data.displayName, 120) &&
+        data.role in ['admin', 'bid_manager', 'reviewer', 'viewer'] &&
+        data.status in ['active', 'invited'] &&
+        (!('department' in data) || isValidString(data.department, 120)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTender(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'referenceNumber', 'title', 'authority', 'sourceType', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'referenceNumber', 'title', 'authority',
+          'department', 'location', 'industry', 'sourceType', 'sourcePortal',
+          'estimatedValueLakhs', 'emdAmountLakhs', 'tenderFeeInr', 'deadlineDate', 'publishDate',
+          'status', 'eligibilityStatus', 'assignedToUid', 'assignedToName', 'reminderEnabled',
+          'summary', 'isSaved', 'documentId', 'checklist', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.referenceNumber, 140) &&
+        isNonEmptyString(data.title, 350) &&
+        isNonEmptyString(data.authority, 250) &&
+        data.sourceType in ['DEMO_DATA', 'UPLOADED_PDF', 'PORTAL_SYNC'] &&
+        data.status in ['Discovered', 'Under Review', 'Eligibility Checking', 'Bid Preparation', 'Internal Review', 'Submitted', 'Won', 'Lost'] &&
+        (!('department' in data) || isValidString(data.department, 200)) &&
+        (!('location' in data) || isValidString(data.location, 160)) &&
+        (!('industry' in data) || isValidString(data.industry, 120)) &&
+        (!('sourcePortal' in data) || isValidString(data.sourcePortal, 100)) &&
+        (!('estimatedValueLakhs' in data) || data.estimatedValueLakhs is number) &&
+        (!('emdAmountLakhs' in data) || data.emdAmountLakhs is number) &&
+        (!('tenderFeeInr' in data) || data.tenderFeeInr is number) &&
+        (!('deadlineDate' in data) || isValidString(data.deadlineDate, 40)) &&
+        (!('publishDate' in data) || isValidString(data.publishDate, 40)) &&
+        (!('eligibilityStatus' in data) || data.eligibilityStatus in ['Not Checked', 'Eligible', 'Potentially Eligible', 'Ineligible', 'Insufficient Information']) &&
+        (!('assignedToUid' in data) || isValidString(data.assignedToUid, 128)) &&
+        (!('assignedToName' in data) || isValidString(data.assignedToName, 120)) &&
+        (!('reminderEnabled' in data) || data.reminderEnabled is bool) &&
+        (!('summary' in data) || isValidString(data.summary, 4000)) &&
+        (!('isSaved' in data) || data.isSaved is bool) &&
+        (!('documentId' in data) || isValidString(data.documentId, 128)) &&
+        (!('checklist' in data) || (data.checklist is list && data.checklist.size() <= 30 && (data.checklist.size() == 0 || data.checklist[0] is map))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDocument(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'fileName', 'mimeType', 'pageCount', 'chunkCount', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'fileName', 'mimeType', 'fileSizeBytes', 'pageCount', 'chunkCount', 'extractedPreview', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        (!('tenderId' in data) || isValidString(data.tenderId, 128)) &&
+        isNonEmptyString(data.fileName, 260) &&
+        isNonEmptyString(data.mimeType, 100) &&
+        (!('fileSizeBytes' in data) || data.fileSizeBytes is number) &&
+        data.pageCount is number &&
+        data.chunkCount is number &&
+        (!('extractedPreview' in data) || isValidString(data.extractedPreview, 8000)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidChunk(data, orgId, documentId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'documentId', 'chunkIndex', 'pageNumber', 'content', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'orgId', 'ownerId', 'memberUids', 'documentId', 'chunkIndex', 'pageNumber', 'sectionType', 'content', 'embedding', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        data.documentId == documentId &&
+        data.chunkIndex is number &&
+        data.pageNumber is number &&
+        (!('sectionType' in data) || isValidString(data.sectionType, 80)) &&
+        isNonEmptyString(data.content, 4000) &&
+        (!('embedding' in data) || (data.embedding is list && data.embedding.size() <= 4096 && (data.embedding.size() == 0 || data.embedding[0] is number))) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidAnalysis(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'executiveSummary', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'documentId', 'executiveSummary',
+          'tenderMetadata', 'eligibilityCriteria', 'technicalSpecs', 'financialRequirements',
+          'importantDates', 'mandatoryDocuments', 'disqualificationConditions', 'initialRisks',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.tenderId, 128) &&
+        (!('documentId' in data) || isValidString(data.documentId, 128)) &&
+        isNonEmptyString(data.executiveSummary, 8000) &&
+        (!('tenderMetadata' in data) || data.tenderMetadata is map) &&
+        (!('eligibilityCriteria' in data) || (data.eligibilityCriteria is list && data.eligibilityCriteria.size() <= 40 && (data.eligibilityCriteria.size() == 0 || data.eligibilityCriteria[0] is map))) &&
+        (!('technicalSpecs' in data) || (data.technicalSpecs is list && data.technicalSpecs.size() <= 40 && (data.technicalSpecs.size() == 0 || data.technicalSpecs[0] is map))) &&
+        (!('financialRequirements' in data) || (data.financialRequirements is list && data.financialRequirements.size() <= 30 && (data.financialRequirements.size() == 0 || data.financialRequirements[0] is map))) &&
+        (!('importantDates' in data) || (data.importantDates is list && data.importantDates.size() <= 20 && (data.importantDates.size() == 0 || data.importantDates[0] is map))) &&
+        (!('mandatoryDocuments' in data) || (data.mandatoryDocuments is list && data.mandatoryDocuments.size() <= 40 && (data.mandatoryDocuments.size() == 0 || data.mandatoryDocuments[0] is map))) &&
+        (!('disqualificationConditions' in data) || (data.disqualificationConditions is list && data.disqualificationConditions.size() <= 30 && (data.disqualificationConditions.size() == 0 || data.disqualificationConditions[0] is map))) &&
+        (!('initialRisks' in data) || (data.initialRisks is list && data.initialRisks.size() <= 30 && (data.initialRisks.size() == 0 || data.initialRisks[0] is map))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidEligibility(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'overallStatus', 'summary', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'overallStatus', 'summary',
+          'financialAssessment', 'experienceAssessment', 'certificationAssessment',
+          'comparisons', 'missingDocuments', 'complianceGaps', 'disqualificationRisks',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.tenderId, 128) &&
+        data.overallStatus in ['Eligible', 'Potentially Eligible', 'Ineligible', 'Insufficient Information'] &&
+        isNonEmptyString(data.summary, 4000) &&
+        (!('financialAssessment' in data) || isValidString(data.financialAssessment, 3000)) &&
+        (!('experienceAssessment' in data) || isValidString(data.experienceAssessment, 3000)) &&
+        (!('certificationAssessment' in data) || isValidString(data.certificationAssessment, 3000)) &&
+        (!('comparisons' in data) || (data.comparisons is list && data.comparisons.size() <= 40 && (data.comparisons.size() == 0 || data.comparisons[0] is map))) &&
+        (!('missingDocuments' in data) || (data.missingDocuments is list && data.missingDocuments.size() <= 40 && (data.missingDocuments.size() == 0 || data.missingDocuments[0] is string))) &&
+        (!('complianceGaps' in data) || (data.complianceGaps is list && data.complianceGaps.size() <= 30 && (data.complianceGaps.size() == 0 || data.complianceGaps[0] is string))) &&
+        (!('disqualificationRisks' in data) || (data.disqualificationRisks is list && data.disqualificationRisks.size() <= 30 && (data.disqualificationRisks.size() == 0 || data.disqualificationRisks[0] is string))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProposal(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'title', 'templateType', 'currentVersion', 'sections', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'title', 'templateType',
+          'currentVersion', 'sections', 'complianceNotes', 'versions', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.tenderId, 128) &&
+        isNonEmptyString(data.title, 300) &&
+        isNonEmptyString(data.templateType, 100) &&
+        data.currentVersion is number && data.currentVersion >= 1 &&
+        data.sections is list && data.sections.size() <= 20 && (data.sections.size() == 0 || data.sections[0] is map) &&
+        (!('complianceNotes' in data) || (data.complianceNotes is list && data.complianceNotes.size() <= 20 && (data.complianceNotes.size() == 0 || data.complianceNotes[0] is string))) &&
+        (!('versions' in data) || (data.versions is list && data.versions.size() <= 15 && (data.versions.size() == 0 || data.versions[0] is map))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFinancial(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'tenderBudgetLakhs', 'costInputs', 'scenarios', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'tenderBudgetLakhs', 'emdLakhs',
+          'pbgPercent', 'costInputs', 'scenarios', 'aiCommentary', 'recommendedBidLakhs',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.tenderId, 128) &&
+        data.tenderBudgetLakhs is number &&
+        (!('emdLakhs' in data) || data.emdLakhs is number) &&
+        (!('pbgPercent' in data) || data.pbgPercent is number) &&
+        data.costInputs is map &&
+        data.scenarios is list && data.scenarios.size() <= 5 && (data.scenarios.size() == 0 || data.scenarios[0] is map) &&
+        (!('aiCommentary' in data) || isValidString(data.aiCommentary, 5000)) &&
+        (!('recommendedBidLakhs' in data) || data.recommendedBidLakhs is number) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRisk(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'overallRiskLevel', 'executiveSummary', 'risks', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'overallRiskLevel',
+          'executiveSummary', 'risks', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        isNonEmptyString(data.tenderId, 128) &&
+        data.overallRiskLevel in ['Low', 'Medium', 'High', 'Critical'] &&
+        isNonEmptyString(data.executiveSummary, 4000) &&
+        data.risks is list && data.risks.size() <= 40 && (data.risks.size() == 0 || data.risks[0] is map) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidActivity(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'actorUid', 'actorName', 'actionType', 'description', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'actorUid', 'actorName', 'actionType', 'description', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        (!('tenderId' in data) || isValidString(data.tenderId, 128)) &&
+        isValidId(data.actorUid) &&
+        data.actorUid == request.auth.uid &&
+        isNonEmptyString(data.actorName, 120) &&
+        isNonEmptyString(data.actionType, 80) &&
+        isNonEmptyString(data.description, 600) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data, orgId) {
+      return data.keys().hasAll(['id', 'orgId', 'ownerId', 'memberUids', 'title', 'message', 'severity', 'isRead', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'orgId', 'ownerId', 'memberUids', 'tenderId', 'title', 'message', 'severity', 'isRead', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.orgId == orgId &&
+        isValidId(data.ownerId) &&
+        hasValidMemberUids(data) &&
+        (!('tenderId' in data) || isValidString(data.tenderId, 128)) &&
+        isNonEmptyString(data.title, 200) &&
+        isNonEmptyString(data.message, 600) &&
+        data.severity in ['info', 'warning', 'critical'] &&
+        data.isRead is bool &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow list, write: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == request.auth.uid &&
+        incoming().role in ['bid_manager', 'reviewer', 'viewer'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'orgId', 'jobTitle', 'updatedAt']))
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /organizations/{orgId} {
+      allow get: if isValidId(orgId) && isVerifiedUser() && (
+        existing().ownerId == request.auth.uid ||
+        request.auth.uid in existing().memberUids ||
+        isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.uid in resource.data.memberUids
+      );
+      allow create: if isValidId(orgId) &&
+        isVerifiedUser() &&
+        isValidOrganization(incoming()) &&
+        incoming().id == orgId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(orgId) &&
+        isVerifiedUser() &&
+        isValidOrganization(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (existing().ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'memberUids', 'name', 'registrationNumber', 'gstin', 'panNumber', 'udyamNumber',
+            'industry', 'businessCategory', 'headquarters', 'yearsInOperation',
+            'annualTurnoverLakhs', 'netWorthLakhs', 'employeeCount', 'capabilitiesSummary',
+            'certifications', 'pastProjectsSummary', 'website', 'updatedAt'
+          ]))
+        );
+      allow delete: if isValidId(orgId) && (isAdmin() || existing().ownerId == request.auth.uid);
+
+      match /members/{memberId} {
+        allow get: if isValidId(orgId) && isValidId(memberId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(memberId) &&
+          isOrgOwner(orgId) &&
+          isValidTeamMember(incoming(), orgId) &&
+          incoming().id == memberId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(memberId) &&
+          isValidTeamMember(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (isOrgOwner(orgId) && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'department', 'displayName', 'uid', 'memberUids', 'updatedAt']))
+          );
+        allow delete: if isValidId(orgId) && isValidId(memberId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /tenders/{tenderId} {
+        allow get: if isValidId(orgId) && isValidId(tenderId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(tenderId) &&
+          isOrgMember(orgId) &&
+          isValidTender(incoming(), orgId) &&
+          incoming().id == tenderId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(tenderId) &&
+          isOrgMember(orgId) &&
+          isValidTender(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (existing().status in ['Submitted', 'Won', 'Lost'] && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assignedToUid', 'assignedToName', 'reminderEnabled', 'isSaved', 'updatedAt'])) ||
+            (!(existing().status in ['Submitted', 'Won', 'Lost']) && incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'authority', 'department', 'location', 'industry', 'estimatedValueLakhs',
+              'emdAmountLakhs', 'tenderFeeInr', 'deadlineDate', 'publishDate', 'status',
+              'eligibilityStatus', 'assignedToUid', 'assignedToName', 'reminderEnabled',
+              'summary', 'isSaved', 'documentId', 'checklist', 'memberUids', 'updatedAt'
+            ]))
+          );
+        allow delete: if isValidId(orgId) && isValidId(tenderId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /documents/{documentId} {
+        allow get: if isValidId(orgId) && isValidId(documentId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(documentId) &&
+          isOrgMember(orgId) &&
+          isValidDocument(incoming(), orgId) &&
+          incoming().id == documentId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(documentId) &&
+          isOrgMember(orgId) &&
+          isValidDocument(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['tenderId', 'chunkCount', 'extractedPreview', 'memberUids', 'updatedAt'])
+          );
+        allow delete: if isValidId(orgId) && isValidId(documentId) && (isOrgOwner(orgId) || isAdmin());
+
+        match /chunks/{chunkId} {
+          allow get: if isValidId(orgId) && isValidId(documentId) && isValidId(chunkId) && (isOrgMember(orgId) || isAdmin());
+          allow list: if isVerifiedUser() && (
+            resource.data.ownerId == request.auth.uid ||
+            request.auth.uid in resource.data.memberUids
+          );
+          allow create: if isValidId(orgId) && isValidId(documentId) && isValidId(chunkId) &&
+            isOrgMember(orgId) &&
+            exists(/databases/$(database)/documents/organizations/$(orgId)/documents/$(documentId)) &&
+            isValidChunk(incoming(), orgId, documentId) &&
+            incoming().id == chunkId &&
+            incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+            incoming().createdAt == request.time;
+          allow update: if false;
+          allow delete: if isValidId(orgId) && isValidId(documentId) && isValidId(chunkId) && (isOrgOwner(orgId) || isAdmin());
+        }
+      }
+
+      match /analyses/{analysisId} {
+        allow get: if isValidId(orgId) && isValidId(analysisId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(analysisId) &&
+          isOrgMember(orgId) &&
+          isValidAnalysis(incoming(), orgId) &&
+          incoming().id == analysisId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(analysisId) &&
+          isOrgMember(orgId) &&
+          isValidAnalysis(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'executiveSummary', 'tenderMetadata', 'eligibilityCriteria', 'technicalSpecs',
+              'financialRequirements', 'importantDates', 'mandatoryDocuments',
+              'disqualificationConditions', 'initialRisks', 'updatedAt'
+            ])
+          );
+        allow delete: if isValidId(orgId) && isValidId(analysisId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /eligibilities/{eligibilityId} {
+        allow get: if isValidId(orgId) && isValidId(eligibilityId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(eligibilityId) &&
+          isOrgMember(orgId) &&
+          isValidEligibility(incoming(), orgId) &&
+          incoming().id == eligibilityId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(eligibilityId) &&
+          isOrgMember(orgId) &&
+          isValidEligibility(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'overallStatus', 'summary', 'financialAssessment', 'experienceAssessment',
+              'certificationAssessment', 'comparisons', 'missingDocuments',
+              'complianceGaps', 'disqualificationRisks', 'updatedAt'
+            ])
+          );
+        allow delete: if isValidId(orgId) && isValidId(eligibilityId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /proposals/{proposalId} {
+        allow get: if isValidId(orgId) && isValidId(proposalId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(proposalId) &&
+          isOrgMember(orgId) &&
+          isValidProposal(incoming(), orgId) &&
+          incoming().id == proposalId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(proposalId) &&
+          isOrgMember(orgId) &&
+          isValidProposal(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'currentVersion', 'sections', 'complianceNotes', 'versions', 'updatedAt'])
+          );
+        allow delete: if isValidId(orgId) && isValidId(proposalId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /financials/{financialId} {
+        allow get: if isValidId(orgId) && isValidId(financialId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(financialId) &&
+          isOrgMember(orgId) &&
+          isValidFinancial(incoming(), orgId) &&
+          incoming().id == financialId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(financialId) &&
+          isOrgMember(orgId) &&
+          isValidFinancial(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['tenderBudgetLakhs', 'emdLakhs', 'pbgPercent', 'costInputs', 'scenarios', 'aiCommentary', 'recommendedBidLakhs', 'updatedAt'])
+          );
+        allow delete: if isValidId(orgId) && isValidId(financialId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /risks/{riskId} {
+        allow get: if isValidId(orgId) && isValidId(riskId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(riskId) &&
+          isOrgMember(orgId) &&
+          isValidRisk(incoming(), orgId) &&
+          incoming().id == riskId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(riskId) &&
+          isOrgMember(orgId) &&
+          isValidRisk(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['overallRiskLevel', 'executiveSummary', 'risks', 'updatedAt'])
+          );
+        allow delete: if isValidId(orgId) && isValidId(riskId) && (isOrgOwner(orgId) || isAdmin());
+      }
+
+      match /activities/{activityId} {
+        allow get: if isValidId(orgId) && isValidId(activityId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(activityId) &&
+          isOrgMember(orgId) &&
+          isValidActivity(incoming(), orgId) &&
+          incoming().id == activityId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isValidId(orgId) && isValidId(notificationId) && (isOrgMember(orgId) || isAdmin());
+        allow list: if isVerifiedUser() && (
+          resource.data.ownerId == request.auth.uid ||
+          request.auth.uid in resource.data.memberUids
+        );
+        allow create: if isValidId(orgId) && isValidId(notificationId) &&
+          isOrgMember(orgId) &&
+          isValidNotification(incoming(), orgId) &&
+          incoming().id == notificationId &&
+          incoming().ownerId == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId &&
+          incoming().createdAt == request.time;
+        allow update: if isValidId(orgId) && isValidId(notificationId) &&
+          isOrgMember(orgId) &&
+          isValidNotification(incoming(), orgId) &&
+          incoming().id == existing().id &&
+          incoming().orgId == existing().orgId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
+        allow delete: if isValidId(orgId) && isValidId(notificationId) && (isOrgOwner(orgId) || isAdmin());
+      }
+    }
+  }
+}

@@ -1,0 +1,360 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Authenticated user account and organization link.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "orgId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["admin", "bid_manager", "reviewer", "viewer"] },
+        "jobTitle": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Company profile, financial metrics, capabilities, and certifications used for tender eligibility.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "name": { "type": "string", "maxLength": 200 },
+        "registrationNumber": { "type": "string", "maxLength": 100 },
+        "gstin": { "type": "string", "maxLength": 40 },
+        "panNumber": { "type": "string", "maxLength": 40 },
+        "udyamNumber": { "type": "string", "maxLength": 60 },
+        "industry": { "type": "string", "maxLength": 120 },
+        "businessCategory": { "type": "string", "maxLength": 120 },
+        "headquarters": { "type": "string", "maxLength": 200 },
+        "yearsInOperation": { "type": "number" },
+        "annualTurnoverLakhs": { "type": "number" },
+        "netWorthLakhs": { "type": "number" },
+        "employeeCount": { "type": "number" },
+        "capabilitiesSummary": { "type": "string", "maxLength": 5000 },
+        "certifications": { "type": "array" },
+        "pastProjectsSummary": { "type": "string", "maxLength": 5000 },
+        "website": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "memberUids", "name", "industry", "createdAt", "updatedAt"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Organization member with role-based access.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "bid_manager", "reviewer", "viewer"] },
+        "status": { "type": "string", "enum": ["active", "invited"] },
+        "department": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "email", "displayName", "role", "status", "createdAt", "updatedAt"]
+    },
+    "TenderRecord": {
+      "title": "Tender Record",
+      "description": "Tracked government tender within the organization workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "referenceNumber": { "type": "string", "maxLength": 140 },
+        "title": { "type": "string", "maxLength": 350 },
+        "authority": { "type": "string", "maxLength": 250 },
+        "department": { "type": "string", "maxLength": 200 },
+        "location": { "type": "string", "maxLength": 160 },
+        "industry": { "type": "string", "maxLength": 120 },
+        "sourceType": { "type": "string", "enum": ["DEMO_DATA", "UPLOADED_PDF", "PORTAL_SYNC"] },
+        "sourcePortal": { "type": "string", "maxLength": 100 },
+        "estimatedValueLakhs": { "type": "number" },
+        "emdAmountLakhs": { "type": "number" },
+        "tenderFeeInr": { "type": "number" },
+        "deadlineDate": { "type": "string", "maxLength": 40 },
+        "publishDate": { "type": "string", "maxLength": 40 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Discovered",
+            "Under Review",
+            "Eligibility Checking",
+            "Bid Preparation",
+            "Internal Review",
+            "Submitted",
+            "Won",
+            "Lost"
+          ]
+        },
+        "eligibilityStatus": {
+          "type": "string",
+          "enum": ["Not Checked", "Eligible", "Potentially Eligible", "Ineligible", "Insufficient Information"]
+        },
+        "assignedToUid": { "type": "string", "maxLength": 128 },
+        "assignedToName": { "type": "string", "maxLength": 120 },
+        "reminderEnabled": { "type": "boolean" },
+        "summary": { "type": "string", "maxLength": 4000 },
+        "isSaved": { "type": "boolean" },
+        "documentId": { "type": "string", "maxLength": 128 },
+        "checklist": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "referenceNumber", "title", "authority", "sourceType", "status", "createdAt", "updatedAt"]
+    },
+    "TenderDocument": {
+      "title": "Tender Document",
+      "description": "Uploaded PDF tender metadata and extraction summary.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "fileName": { "type": "string", "maxLength": 260 },
+        "mimeType": { "type": "string", "maxLength": 100 },
+        "fileSizeBytes": { "type": "number" },
+        "pageCount": { "type": "number" },
+        "chunkCount": { "type": "number" },
+        "extractedPreview": { "type": "string", "maxLength": 8000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "fileName", "mimeType", "pageCount", "chunkCount", "createdAt", "updatedAt"]
+    },
+    "DocumentChunk": {
+      "title": "Document Chunk",
+      "description": "RAG chunk with page citation and Gemini embedding vector.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "documentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "chunkIndex": { "type": "number" },
+        "pageNumber": { "type": "number" },
+        "sectionType": { "type": "string", "maxLength": 80 },
+        "content": { "type": "string", "maxLength": 4000 },
+        "embedding": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "documentId", "chunkIndex", "pageNumber", "content", "createdAt"]
+    },
+    "TenderAnalysis": {
+      "title": "Tender Analysis",
+      "description": "Structured Gemini analysis report of a tender document.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "documentId": { "type": "string", "maxLength": 128 },
+        "executiveSummary": { "type": "string", "maxLength": 8000 },
+        "tenderMetadata": { "type": "object" },
+        "eligibilityCriteria": { "type": "array" },
+        "technicalSpecs": { "type": "array" },
+        "financialRequirements": { "type": "array" },
+        "importantDates": { "type": "array" },
+        "mandatoryDocuments": { "type": "array" },
+        "disqualificationConditions": { "type": "array" },
+        "initialRisks": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "tenderId", "executiveSummary", "createdAt", "updatedAt"]
+    },
+    "EligibilityAssessment": {
+      "title": "Eligibility Assessment",
+      "description": "Evidence-based eligibility evaluation comparing company profile with tender rules.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "overallStatus": { "type": "string", "enum": ["Eligible", "Potentially Eligible", "Ineligible", "Insufficient Information"] },
+        "summary": { "type": "string", "maxLength": 4000 },
+        "financialAssessment": { "type": "string", "maxLength": 3000 },
+        "experienceAssessment": { "type": "string", "maxLength": 3000 },
+        "certificationAssessment": { "type": "string", "maxLength": 3000 },
+        "comparisons": { "type": "array" },
+        "missingDocuments": { "type": "array" },
+        "complianceGaps": { "type": "array" },
+        "disqualificationRisks": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "tenderId", "overallStatus", "summary", "createdAt", "updatedAt"]
+    },
+    "GeneratedProposal": {
+      "title": "Generated Proposal",
+      "description": "AI co-authored tender proposal with editable sections and version history.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "templateType": { "type": "string", "maxLength": 100 },
+        "currentVersion": { "type": "number" },
+        "sections": { "type": "array" },
+        "complianceNotes": { "type": "array" },
+        "versions": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "tenderId", "title", "templateType", "currentVersion", "sections", "createdAt", "updatedAt"]
+    },
+    "FinancialAnalysis": {
+      "title": "Financial Analysis",
+      "description": "Tender budget breakdown, cost model, and bid pricing scenarios.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "tenderBudgetLakhs": { "type": "number" },
+        "emdLakhs": { "type": "number" },
+        "pbgPercent": { "type": "number" },
+        "costInputs": { "type": "object" },
+        "scenarios": { "type": "array" },
+        "aiCommentary": { "type": "string", "maxLength": 5000 },
+        "recommendedBidLakhs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "tenderId", "tenderBudgetLakhs", "costInputs", "scenarios", "createdAt", "updatedAt"]
+    },
+    "RiskReport": {
+      "title": "Risk Report",
+      "description": "Severity-ranked tender risk assessment with clause citations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "overallRiskLevel": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "executiveSummary": { "type": "string", "maxLength": 4000 },
+        "risks": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "tenderId", "overallRiskLevel", "executiveSummary", "risks", "createdAt", "updatedAt"]
+    },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "description": "Immutable organization tender workflow audit log.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "actorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorName": { "type": "string", "maxLength": 120 },
+        "actionType": { "type": "string", "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 600 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "actorUid", "actorName", "actionType", "description", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "Notification Item",
+      "description": "Deadline reminders and workflow alerts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orgId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "tenderId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 600 },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "ownerId", "memberUids", "title", "message", "severity", "isRead", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user profiles isolated by UID."
+    },
+    "/organizations/{orgId}": {
+      "schema": { "$ref": "#/entities/Organization" },
+      "description": "Organization company profiles and procurement credentials."
+    },
+    "/organizations/{orgId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Team roster and RBAC roles within an organization."
+    },
+    "/organizations/{orgId}/tenders/{tenderId}": {
+      "schema": { "$ref": "#/entities/TenderRecord" },
+      "description": "Organization-scoped government tenders."
+    },
+    "/organizations/{orgId}/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/TenderDocument" },
+      "description": "Uploaded tender PDF metadata and text previews."
+    },
+    "/organizations/{orgId}/documents/{documentId}/chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/DocumentChunk" },
+      "description": "Page-cited RAG chunks and Gemini embedding vectors."
+    },
+    "/organizations/{orgId}/analyses/{analysisId}": {
+      "schema": { "$ref": "#/entities/TenderAnalysis" },
+      "description": "Structured Gemini tender analysis reports."
+    },
+    "/organizations/{orgId}/eligibilities/{eligibilityId}": {
+      "schema": { "$ref": "#/entities/EligibilityAssessment" },
+      "description": "Evidence-based eligibility reports."
+    },
+    "/organizations/{orgId}/proposals/{proposalId}": {
+      "schema": { "$ref": "#/entities/GeneratedProposal" },
+      "description": "Co-authored tender proposals and saved versions."
+    },
+    "/organizations/{orgId}/financials/{financialId}": {
+      "schema": { "$ref": "#/entities/FinancialAnalysis" },
+      "description": "Financial bid models and pricing scenarios."
+    },
+    "/organizations/{orgId}/risks/{riskId}": {
+      "schema": { "$ref": "#/entities/RiskReport" },
+      "description": "Risk intelligence reports with severity ratings."
+    },
+    "/organizations/{orgId}/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Activity audit trail for tender operations."
+    },
+    "/organizations/{orgId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationItem" },
+      "description": "Deadline alerts and workflow notifications."
+    }
+  }
+}
