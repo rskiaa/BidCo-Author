@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -129,12 +130,12 @@ export function EligibilityCheckerView({
   return (
     <div className="space-y-6">
       {/* Control Header */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="neon-surface rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-lg font-bold text-slate-900">
+          <h2 className="font-display text-lg font-bold text-white">
             Evidence-Based Eligibility &amp; Compliance Checker
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-[#9AA0A6] mt-0.5">
             Compares tender clauses against {organization.name}’s verified financial turnover,
             certifications, and credentials without arbitrary percentage scores.
           </p>
@@ -144,7 +145,7 @@ export function EligibilityCheckerView({
           <select
             value={activeTender?.id || ''}
             onChange={(e) => onSelectTender(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white max-w-xs"
+            className="px-3 py-2 text-sm neon-input rounded-xl max-w-xs"
           >
             {tenders.map((t) => (
               <option key={t.id} value={t.id}>
@@ -153,51 +154,52 @@ export function EligibilityCheckerView({
             ))}
           </select>
 
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.97 }}
             disabled={!activeTender || running}
             onClick={handleRunEligibility}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] disabled:opacity-60 whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl disabled:opacity-60 whitespace-nowrap"
           >
             <Play className="w-4 h-4 text-white" />
             {running ? 'Evaluating...' : 'Run Eligibility Check'}
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* Company Context Snapshot */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 grid sm:grid-cols-4 gap-4 text-xs">
+      <div className="neon-surface rounded-2xl p-5 grid sm:grid-cols-4 gap-4 text-xs">
         <div>
-          <p className="text-slate-500">Registered Company</p>
-          <p className="font-semibold text-slate-900 mt-0.5">{organization.name}</p>
+          <p className="text-[#7B8499]">Registered Company</p>
+          <p className="font-semibold text-white mt-0.5">{organization.name}</p>
         </div>
         <div>
-          <p className="text-slate-500">Avg Annual Turnover</p>
-          <p className="font-mono tabular-nums font-semibold text-slate-900 mt-0.5">
+          <p className="text-[#7B8499]">Avg Annual Turnover</p>
+          <p className="font-mono tabular-nums font-semibold text-[#4ADE80] mt-0.5">
             INR {organization.annualTurnoverLakhs ?? 0} Lakhs
           </p>
         </div>
         <div>
-          <p className="text-slate-500">Experience / Age</p>
-          <p className="font-mono tabular-nums font-semibold text-slate-900 mt-0.5">
+          <p className="text-[#7B8499]">Experience / Age</p>
+          <p className="font-mono tabular-nums font-semibold text-white mt-0.5">
             {organization.yearsInOperation ?? 0} Years
           </p>
         </div>
         <div>
-          <p className="text-slate-500">Certifications on File</p>
-          <p className="font-medium text-slate-900 mt-0.5 truncate">
+          <p className="text-[#7B8499]">Certifications on File</p>
+          <p className="font-medium text-[#8AB4F8] mt-0.5 truncate">
             {(organization.certifications || []).join(', ') || 'None specified'}
           </p>
         </div>
       </div>
 
       {!activeReport ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2">
-          <CheckSquare className="w-8 h-8 text-slate-400 mx-auto" />
-          <h3 className="font-display text-base font-semibold text-slate-900">
+        <div className="neon-surface rounded-2xl p-12 text-center space-y-2">
+          <CheckSquare className="w-8 h-8 text-[#4ADE80] mx-auto" />
+          <h3 className="font-display text-base font-semibold text-white">
             No Eligibility Assessment Run Yet
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-[#9AA0A6] max-w-md mx-auto">
             Click “Run Eligibility Check” above to generate a clause-by-clause compliance table and
             missing document checklist.
           </p>
@@ -205,48 +207,48 @@ export function EligibilityCheckerView({
       ) : (
         <div className="space-y-6">
           {/* Determination Banner */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+          <div className="neon-surface rounded-2xl p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 {activeReport.overallStatus === 'Eligible' && (
-                  <CheckCircle2 className="w-5 h-5 text-[#1E8E3E]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#4ADE80]" />
                 )}
                 {activeReport.overallStatus === 'Potentially Eligible' && (
-                  <AlertCircle className="w-5 h-5 text-[#F9AB00]" />
+                  <AlertCircle className="w-5 h-5 text-[#FCD34D]" />
                 )}
                 {activeReport.overallStatus === 'Ineligible' && (
-                  <XCircle className="w-5 h-5 text-[#D93025]" />
+                  <XCircle className="w-5 h-5 text-[#F87171]" />
                 )}
                 {activeReport.overallStatus === 'Insufficient Information' && (
-                  <HelpCircle className="w-5 h-5 text-[#5F6368]" />
+                  <HelpCircle className="w-5 h-5 text-[#9AA0A6]" />
                 )}
-                <h3 className="font-display text-lg font-bold text-[#202124]">
+                <h3 className="font-display text-lg font-bold text-white">
                   Determination: {activeReport.overallStatus}
                 </h3>
               </div>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-[#9AA0A6]">
                 Legal verification rests on documentary proof
               </span>
             </div>
 
-            <p className="text-sm text-slate-700 leading-relaxed">{activeReport.summary}</p>
+            <p className="text-sm text-[#D2D8E2] leading-relaxed">{activeReport.summary}</p>
 
-            <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-slate-200 text-xs">
-              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-                <p className="font-semibold text-slate-900 mb-1">Financial Eligibility</p>
-                <p className="text-slate-600 leading-relaxed">
+            <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-white/[0.08] text-xs">
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                <p className="font-semibold text-[#8AB4F8] mb-1">Financial Eligibility</p>
+                <p className="text-[#A7B0C0] leading-relaxed">
                   {activeReport.financialAssessment}
                 </p>
               </div>
-              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-                <p className="font-semibold text-slate-900 mb-1">Experience Requirements</p>
-                <p className="text-slate-600 leading-relaxed">
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                <p className="font-semibold text-[#4ADE80] mb-1">Experience Requirements</p>
+                <p className="text-[#A7B0C0] leading-relaxed">
                   {activeReport.experienceAssessment}
                 </p>
               </div>
-              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-                <p className="font-semibold text-slate-900 mb-1">Certifications &amp; Statutory</p>
-                <p className="text-slate-600 leading-relaxed">
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                <p className="font-semibold text-[#FCD34D] mb-1">Certifications &amp; Statutory</p>
+                <p className="text-[#A7B0C0] leading-relaxed">
                   {activeReport.certificationAssessment}
                 </p>
               </div>
@@ -254,15 +256,15 @@ export function EligibilityCheckerView({
           </div>
 
           {/* Requirement-by-Requirement Table */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200">
-              <h3 className="font-display text-base font-semibold text-slate-900">
+          <div className="neon-surface rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/[0.08]">
+              <h3 className="font-display text-base font-semibold text-white">
                 Requirement-by-Requirement Comparison
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <thead className="bg-white/[0.03] text-[#9AA0A6] border-b border-white/[0.08]">
                   <tr>
                     <th className="px-5 py-3 font-medium">Tender Requirement</th>
                     <th className="px-5 py-3 font-medium">Company Evidence</th>
@@ -271,36 +273,36 @@ export function EligibilityCheckerView({
                     <th className="px-5 py-3 font-medium">Remediation</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-white/[0.06]">
                   {(activeReport.comparisons || []).map((row, idx) => (
-                    <tr key={idx} className="align-top hover:bg-slate-50/70">
-                      <td className="px-5 py-3.5 text-slate-900 font-medium max-w-xs">
+                    <tr key={idx} className="align-top hover:bg-[#4285F4]/[0.05] transition-colors">
+                      <td className="px-5 py-3.5 text-white font-medium max-w-xs">
                         <p>{row.requirement}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{row.category}</p>
+                        <p className="text-[11px] text-[#7B8499] mt-0.5">{row.category}</p>
                       </td>
-                      <td className="px-5 py-3.5 text-slate-700 max-w-xs">
+                      <td className="px-5 py-3.5 text-[#C4CBD6] max-w-xs">
                         {row.companyEvidence}
                       </td>
                       <td className="px-5 py-3.5 font-semibold whitespace-nowrap">
                         <span
                           className={
                             row.status === 'Met'
-                              ? 'text-[#1E8E3E]'
+                              ? 'text-[#4ADE80]'
                               : row.status === 'Partial'
-                                ? 'text-[#B06000]'
+                                ? 'text-[#FCD34D]'
                                 : row.status === 'Not Met'
-                                  ? 'text-[#D93025]'
-                                  : 'text-[#5F6368]'
+                                  ? 'text-[#F87171]'
+                                  : 'text-[#9AA0A6]'
                           }
                         >
                           {row.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-[#5F6368] max-w-xs">
-                        <span className="font-mono text-[#1A73E8]">{row.sourcePage}</span>
+                      <td className="px-5 py-3.5 text-[#A7B0C0] max-w-xs">
+                        <span className="font-mono text-[#8AB4F8]">{row.sourcePage}</span>
                         <p className="mt-0.5 line-clamp-2">“{row.evidenceQuote}”</p>
                       </td>
-                      <td className="px-5 py-3.5 text-[#5F6368] max-w-xs">
+                      <td className="px-5 py-3.5 text-[#A7B0C0] max-w-xs">
                         {row.remediationNote}
                       </td>
                     </tr>
@@ -312,29 +314,29 @@ export function EligibilityCheckerView({
 
           {/* Missing Docs, Gaps & Disqualification */}
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white border border-[#DADCE0] rounded-xl p-5">
-              <h4 className="text-sm font-semibold text-[#202124] mb-3">
+            <div className="neon-surface rounded-2xl p-5">
+              <h4 className="text-sm font-semibold text-white mb-3">
                 Missing Document Checklist
               </h4>
-              <ul className="space-y-2 text-xs text-[#3C4043] list-disc pl-4">
+              <ul className="space-y-2 text-xs text-[#C4CBD6] list-disc pl-4">
                 {(activeReport.missingDocuments || []).map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
               </ul>
             </div>
-            <div className="bg-white border border-[#DADCE0] rounded-xl p-5">
-              <h4 className="text-sm font-semibold text-[#202124] mb-3">Compliance Gaps</h4>
-              <ul className="space-y-2 text-xs text-[#3C4043] list-disc pl-4">
+            <div className="neon-surface rounded-2xl p-5">
+              <h4 className="text-sm font-semibold text-[#FCD34D] mb-3">Compliance Gaps</h4>
+              <ul className="space-y-2 text-xs text-[#C4CBD6] list-disc pl-4">
                 {(activeReport.complianceGaps || []).map((g, i) => (
                   <li key={i}>{g}</li>
                 ))}
               </ul>
             </div>
-            <div className="bg-white border border-[#DADCE0] rounded-xl p-5">
-              <h4 className="text-sm font-semibold text-[#D93025] mb-3">
+            <div className="neon-surface rounded-2xl p-5">
+              <h4 className="text-sm font-semibold text-[#F87171] mb-3">
                 Potential Disqualification Risks
               </h4>
-              <ul className="space-y-2 text-xs text-[#3C4043] list-disc pl-4">
+              <ul className="space-y-2 text-xs text-[#C4CBD6] list-disc pl-4">
                 {(activeReport.disqualificationRisks || []).map((r, i) => (
                   <li key={i}>{r}</li>
                 ))}

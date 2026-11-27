@@ -28,17 +28,19 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6">
-          <div className="max-w-lg w-full bg-white border border-[#DADCE0] rounded-xl p-8">
-            <div className="flex items-center gap-3 text-[#D93025] mb-3">
+        <div className="min-h-screen bg-[#090B10] google-neon-grid flex items-center justify-center p-6">
+          <div className="max-w-lg w-full neon-surface rounded-2xl p-8">
+            <div className="flex items-center gap-3 text-[#F87171] mb-3">
               <AlertTriangle className="w-5 h-5 shrink-0" />
-              <h2 className="text-lg font-semibold text-[#202124]">Workspace Recovery</h2>
+              <h2 className="font-display text-lg font-semibold text-[#F1F3F4]">
+                Workspace Recovery
+              </h2>
             </div>
-            <p className="text-sm text-[#5F6368] leading-relaxed mb-6">{this.state.message}</p>
+            <p className="text-sm text-[#A7B0C0] leading-relaxed mb-6">{this.state.message}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-lg"
             >
               <RotateCcw className="w-4 h-4" />
               Reload Workspace

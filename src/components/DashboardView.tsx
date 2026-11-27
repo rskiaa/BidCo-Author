@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   ArrowRight,
   CalendarClock,
@@ -17,6 +18,12 @@ import type {
   TenderRecord,
 } from '../types/procurement.ts';
 import type { NavSection } from './SidebarLayout.tsx';
+import {
+  AnimatedNumber,
+  EASE_OUT_EXPO,
+  StaggerContainer,
+  StaggerItem,
+} from './NeonPrimitives.tsx';
 
 interface DashboardViewProps {
   organization: Organization;
@@ -40,6 +47,17 @@ const STATUS_ORDER = [
   'Lost',
 ] as const;
 
+const BAR_COLORS: Record<string, string> = {
+  Discovered: '#4285F4',
+  'Under Review': '#669DF6',
+  'Eligibility Checking': '#FBBC04',
+  'Bid Preparation': '#4285F4',
+  'Internal Review': '#FCD34D',
+  Submitted: '#34A853',
+  Won: '#4ADE80',
+  Lost: '#EA4335',
+};
+
 export function DashboardView({
   organization,
   tenders,
@@ -50,14 +68,19 @@ export function DashboardView({
   onNavigate,
   onSelectTender,
 }: DashboardViewProps) {
+  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
+
   const nowStr = new Date().toISOString().slice(0, 10);
   const in30Days = new Date(Date.now() + 30 * 86400 * 1000).toISOString().slice(0, 10);
 
   const totalTenders = tenders.length;
-  const relevantTenders = tenders.filter((t) =>
-    !organization.industry ||
-    (t.industry || '').toLowerCase().includes(organization.industry.split('&')[0].trim().toLowerCase()) ||
-    t.isSaved,
+  const relevantTenders = tenders.filter(
+    (t) =>
+      !organization.industry ||
+      (t.industry || '')
+        .toLowerCase()
+        .includes(organization.industry.split('&')[0].trim().toLowerCase()) ||
+      t.isSaved,
   ).length;
   const underEvaluation = tenders.filter((t) =>
     ['Under Review', 'Eligibility Checking'].includes(t.status),
@@ -72,14 +95,14 @@ export function DashboardView({
     .filter((t) => t.deadlineDate && t.deadlineDate >= nowStr && t.deadlineDate <= in30Days)
     .sort((a, b) => (a.deadlineDate || '').localeCompare(b.deadlineDate || ''));
 
-  // Industry breakdown for SVG donut chart
+  // Industry breakdown for interactive SVG donut chart
   const industryCounts = tenders.reduce<Record<string, number>>((acc, t) => {
     const key = t.industry || 'Uncategorized';
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
   const industryEntries = Object.entries(industryCounts).sort((a, b) => b[1] - a[1]);
-  const donutColors = ['#4285F4', '#34A853', '#FBBC04', '#EA4335', '#1A73E8', '#5F6368'];
+  const donutColors = ['#4285F4', '#34A853', '#FBBC04', '#EA4335', '#669DF6', '#9AA0A6'];
 
   // AI Recommendations derived strictly from real database records
   const recommendations: Array<{
@@ -88,6 +111,7 @@ export function DashboardView({
     actionLabel: string;
     targetNav: NavSection;
     tenderId?: string;
+    accent: string;
   }> = [];
 
   for (const t of tenders) {
@@ -103,6 +127,7 @@ export function DashboardView({
         actionLabel: 'Analyze Tender',
         targetNav: 'analyzer',
         tenderId: t.id,
+        accent: '#4285F4',
       });
     } else if (!hasEligibility && recommendations.length < 4) {
       recommendations.push({
@@ -111,6 +136,7 @@ export function DashboardView({
         actionLabel: 'Check Eligibility',
         targetNav: 'eligibility',
         tenderId: t.id,
+        accent: '#34A853',
       });
     } else if (!hasRisk && recommendations.length < 4) {
       recommendations.push({
@@ -119,127 +145,230 @@ export function DashboardView({
         actionLabel: 'Run Risk Scan',
         targetNav: 'risk',
         tenderId: t.id,
+        accent: '#EA4335',
       });
     } else if (!hasProposal && recommendations.length < 4) {
       recommendations.push({
         title: `Draft Technical Proposal: ${t.referenceNumber}`,
         detail: `Co-author compliant bid sections using indexed tender evidence.`,
-        actionLabel: 'Open Co-Author',
+        actionLabel: 'Open Bid Writer',
         targetNav: 'coauthor',
         tenderId: t.id,
+        accent: '#FBBC04',
       });
     }
   }
 
+  const kpiCards = [
+    {
+      label: 'Total Discovered',
+      value: totalTenders,
+      sub: 'Workspace records',
+      accent: '#4285F4',
+    },
+    {
+      label: 'Relevant Tenders',
+      value: relevantTenders,
+      sub: 'Industry / saved match',
+      accent: '#34A853',
+    },
+    {
+      label: 'Under Evaluation',
+      value: underEvaluation,
+      sub: 'Review & eligibility',
+      accent: '#FBBC04',
+    },
+    {
+      label: 'Eligible / Likely',
+      value: eligibleCount,
+      sub: 'Verified profile fit',
+      accent: '#4ADE80',
+    },
+    {
+      label: 'Bids in Preparation',
+      value: inPreparation,
+      sub: 'Active bid writing',
+      accent: '#669DF6',
+    },
+    {
+      label: 'Upcoming Deadlines',
+      value: upcomingDeadlines.length,
+      sub: 'Next 30 days',
+      accent: '#EA4335',
+    },
+  ];
+
+  const hoveredEntry = hoveredSector
+    ? industryEntries.find(([ind]) => ind === hoveredSector)
+    : null;
+
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-white border border-[#DADCE0] rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium text-[#1A73E8] mb-1">
+      {/* Hero Overview Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+        className="neon-surface rounded-2xl p-6 sm:p-7 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5"
+      >
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full blur-[90px]"
+          style={{ background: 'rgba(66, 133, 244, 0.18)' }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -bottom-24 left-1/3 w-64 h-64 rounded-full blur-[90px]"
+          style={{ background: 'rgba(52, 168, 83, 0.12)' }}
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10">
+          <p className="text-xs font-medium text-[#8AB4F8] mb-1.5">
             Procurement Intelligence Overview · {organization.industry}
           </p>
-          <h2 className="font-display text-2xl font-bold text-[#202124]">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
             Bid Pipeline &amp; Readiness Summary
           </h2>
-          <p className="text-sm text-[#5F6368] mt-1">
+          <p className="text-sm text-[#A7B0C0] mt-1.5">
             Live workspace metrics backed by Firestore for {organization.name}.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button
+
+        <div className="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.97 }}
             onClick={() => onNavigate('discover')}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-[#DADCE0] bg-white text-[#3C4043] text-sm font-medium rounded-lg hover:bg-[#F1F3F4] whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-secondary text-sm font-medium rounded-xl whitespace-nowrap"
           >
-            <Compass className="w-4 h-4 text-[#1A73E8]" />
+            <Compass className="w-4 h-4 text-[#4ADE80]" />
             Discover Tenders
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.97 }}
             onClick={() => onNavigate('analyzer')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl whitespace-nowrap"
           >
             <FileSearch className="w-4 h-4 text-white" />
             Upload Tender PDF
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* 6 KPI Metric Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        {[
-          { label: 'Total Discovered', value: totalTenders, sub: 'Workspace records' },
-          { label: 'Relevant Tenders', value: relevantTenders, sub: 'Industry / saved match' },
-          { label: 'Under Evaluation', value: underEvaluation, sub: 'Review & eligibility' },
-          { label: 'Eligible / Likely', value: eligibleCount, sub: 'Verified profile fit' },
-          { label: 'Bids in Preparation', value: inPreparation, sub: 'Active co-authoring' },
-          { label: 'Upcoming Deadlines', value: upcomingDeadlines.length, sub: 'Next 30 days' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 truncate">{kpi.label}</p>
-            <p className="font-mono tabular-nums text-2xl font-bold text-slate-900 mt-1.5">
-              {kpi.value}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1 truncate">{kpi.sub}</p>
-          </div>
+      {/* 6 KPI Metric Strip with Staggered Entrance & Spring Counters */}
+      <StaggerContainer className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        {kpiCards.map((kpi) => (
+          <StaggerItem key={kpi.label}>
+            <motion.div
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
+              className="neon-surface-interactive rounded-2xl p-4 h-full relative overflow-hidden"
+            >
+              <div
+                className="h-[2px] w-10 rounded-full mb-3"
+                style={{
+                  backgroundColor: kpi.accent,
+                  boxShadow: `0 0 12px ${kpi.accent}`,
+                }}
+                aria-hidden="true"
+              />
+              <p className="text-xs font-medium text-[#A7B0C0] truncate">{kpi.label}</p>
+              <p className="text-2xl font-bold text-white mt-1.5">
+                <AnimatedNumber value={kpi.value} />
+              </p>
+              <p className="text-[11px] text-[#7B8499] mt-1 truncate">{kpi.sub}</p>
+            </motion.div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
 
       {/* Charts Row */}
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Pipeline Distribution Chart */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.08, ease: EASE_OUT_EXPO }}
+          className="lg:col-span-7 neon-surface rounded-2xl p-6"
+        >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-display text-base font-semibold text-slate-900">
+              <h3 className="font-display text-base font-semibold text-white">
                 Tender Workflow Distribution
               </h3>
-              <p className="text-xs text-slate-500">Count of tenders across bidding stages</p>
+              <p className="text-xs text-[#9AA0A6]">Count of tenders across bidding stages</p>
             </div>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
+            <span className="text-xs font-mono tabular-nums text-[#8AB4F8]">
               {totalTenders} total
             </span>
           </div>
 
-          <div className="space-y-3">
-            {STATUS_ORDER.map((status) => {
+          <div className="space-y-3.5">
+            {STATUS_ORDER.map((status, idx) => {
               const count = tenders.filter((t) => t.status === status).length;
-              const pct = totalTenders > 0 ? Math.round((count / totalTenders) * 100) : 0;
+              const frac = totalTenders > 0 ? count / totalTenders : 0;
+              const color = BAR_COLORS[status] || '#4285F4';
               return (
-                <div key={status} className="grid grid-cols-12 items-center gap-3 text-xs">
-                  <span className="col-span-4 sm:col-span-3 text-[#3C4043] font-medium truncate">
+                <div
+                  key={status}
+                  className="grid grid-cols-12 items-center gap-3 text-xs group py-0.5"
+                >
+                  <span className="col-span-4 sm:col-span-3 text-[#C4CBD6] group-hover:text-white transition-colors font-medium truncate">
                     {status}
                   </span>
-                  <div className="col-span-6 sm:col-span-7 h-2.5 bg-[#F1F3F4] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[#1A73E8] rounded-full transition-all duration-300"
-                      style={{ width: `${pct}%` }}
+                  <div className="col-span-6 sm:col-span-7 h-2.5 bg-white/[0.06] rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: frac }}
+                      transition={{
+                        duration: 0.55,
+                        delay: 0.05 * idx,
+                        ease: EASE_OUT_EXPO,
+                      }}
+                      className="h-full w-full origin-left rounded-full"
+                      style={{
+                        backgroundColor: color,
+                        boxShadow: count > 0 ? `0 0 12px ${color}90` : 'none',
+                      }}
                     />
                   </div>
-                  <span className="col-span-2 text-right font-mono tabular-nums text-[#3C4043]">
+                  <span className="col-span-2 text-right font-mono tabular-nums text-[#F1F3F4] font-medium">
                     {count}
                   </span>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Industry Breakdown SVG Ring */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6">
-          <h3 className="font-display text-base font-semibold text-slate-900 mb-1">
+        {/* Industry Breakdown Interactive Neon Ring */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.12, ease: EASE_OUT_EXPO }}
+          className="lg:col-span-5 neon-surface rounded-2xl p-6"
+        >
+          <h3 className="font-display text-base font-semibold text-white mb-1">
             Industry Categories
           </h3>
-          <p className="text-xs text-slate-500 mb-5">Portfolio split by sector</p>
+          <p className="text-xs text-[#9AA0A6] mb-5">Hover any sector to inspect distribution</p>
 
           {industryEntries.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-500">
+            <div className="py-10 text-center text-xs text-[#7B8499]">
               Add or discover tenders to visualize sector distribution.
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <svg viewBox="0 0 140 140" className="w-36 h-36 shrink-0">
+              <svg viewBox="0 0 140 140" className="w-40 h-40 shrink-0 overflow-visible">
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="52"
+                  fill="transparent"
+                  stroke="rgba(255,255,255,0.06)"
+                  strokeWidth="16"
+                />
                 {(() => {
                   const radius = 52;
                   const circumference = 2 * Math.PI * radius;
@@ -249,18 +378,30 @@ export function DashboardView({
                     const dash = frac * circumference;
                     const strokeDashoffset = -offset;
                     offset += dash;
+                    const color = donutColors[idx % donutColors.length];
+                    const isActive = hoveredSector === ind;
+                    const isDimmed = hoveredSector !== null && !isActive;
                     return (
-                      <circle
+                      <motion.circle
                         key={ind}
                         cx="70"
                         cy="70"
                         r={radius}
                         fill="transparent"
-                        stroke={donutColors[idx % donutColors.length]}
-                        strokeWidth="18"
+                        stroke={color}
+                        strokeWidth={isActive ? 20 : 16}
                         strokeDasharray={`${dash} ${circumference}`}
                         strokeDashoffset={strokeDashoffset}
                         transform="rotate(-90 70 70)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: isDimmed ? 0.35 : 1 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                          cursor: 'pointer',
+                          filter: isActive ? `drop-shadow(0 0 8px ${color})` : 'none',
+                        }}
+                        onMouseEnter={() => setHoveredSector(ind)}
+                        onMouseLeave={() => setHoveredSector(null)}
                       />
                     );
                   });
@@ -269,85 +410,97 @@ export function DashboardView({
                   x="70"
                   y="66"
                   textAnchor="middle"
-                  className="fill-slate-900 font-mono text-lg font-bold"
+                  className="fill-white font-mono text-lg font-bold"
                 >
-                  {industryEntries.length}
+                  {hoveredEntry ? hoveredEntry[1] : industryEntries.length}
                 </text>
                 <text
                   x="70"
                   y="84"
                   textAnchor="middle"
-                  className="fill-slate-500 text-[10px]"
+                  className="fill-[#9AA0A6] text-[10px]"
                 >
-                  sectors
+                  {hoveredEntry ? 'tenders' : 'sectors'}
                 </text>
               </svg>
 
               <div className="flex-1 w-full space-y-2">
-                {industryEntries.slice(0, 6).map(([ind, count], idx) => (
-                  <div key={ind} className="flex items-center justify-between text-xs gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: donutColors[idx % donutColors.length] }}
-                      />
-                      <span className="text-slate-700 truncate">{ind}</span>
+                {industryEntries.slice(0, 6).map(([ind, count], idx) => {
+                  const color = donutColors[idx % donutColors.length];
+                  const isActive = hoveredSector === ind;
+                  return (
+                    <div
+                      key={ind}
+                      onMouseEnter={() => setHoveredSector(ind)}
+                      onMouseLeave={() => setHoveredSector(null)}
+                      className={`flex items-center justify-between text-xs gap-2 px-2.5 py-1.5 rounded-lg transition-colors cursor-default ${
+                        isActive ? 'bg-white/[0.07]' : 'hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-sm shrink-0"
+                          style={{
+                            backgroundColor: color,
+                            boxShadow: isActive ? `0 0 8px ${color}` : 'none',
+                          }}
+                        />
+                        <span className="text-[#D2D8E2] truncate">{ind}</span>
+                      </div>
+                      <span className="font-mono tabular-nums text-white font-medium">{count}</span>
                     </div>
-                    <span className="font-mono tabular-nums text-slate-900 font-medium">
-                      {count}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
-      {/* Deadlines + AI Recommendations */}
+      {/* Deadlines + AI Copilot Next Best Actions */}
       <div className="grid lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-6 bg-white border border-[#DADCE0] rounded-xl p-6">
+        <div className="lg:col-span-6 neon-surface rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-[#F9AB00]" />
-              <h3 className="font-display text-base font-semibold text-[#202124]">
+              <CalendarClock className="w-4 h-4 text-[#FCD34D]" />
+              <h3 className="font-display text-base font-semibold text-white">
                 Upcoming Submission Deadlines
               </h3>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('my_tenders')}
-              className="text-xs font-medium text-[#1A73E8] hover:underline"
+              className="text-xs font-medium text-[#8AB4F8] hover:underline"
             >
               View Pipeline
             </button>
           </div>
 
           {upcomingDeadlines.length === 0 ? (
-            <p className="text-sm text-[#5F6368] py-8 text-center">
+            <p className="text-sm text-[#7B8499] py-8 text-center">
               No tender deadlines within the next 30 days.
             </p>
           ) : (
-            <div className="divide-y divide-[#E8EAED]">
+            <div className="divide-y divide-white/[0.07]">
               {upcomingDeadlines.slice(0, 5).map((t) => (
                 <div
                   key={t.id}
-                  className="py-3 flex items-center justify-between gap-4 hover:bg-[#F8F9FA] px-2 rounded-lg"
+                  className="py-3 flex items-center justify-between gap-4 hover:bg-white/[0.03] px-2.5 rounded-xl transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#202124] truncate">{t.title}</p>
-                    <p className="text-xs text-[#5F6368] mt-0.5 truncate">
+                    <p className="text-sm font-medium text-[#F1F3F4] truncate">{t.title}</p>
+                    <p className="text-xs text-[#9AA0A6] mt-0.5 truncate">
                       {t.referenceNumber} · {t.status}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-mono tabular-nums text-xs font-semibold text-[#B06000]">
+                    <p className="font-mono tabular-nums text-xs font-semibold text-[#FCD34D]">
                       {t.deadlineDate}
                     </p>
                     <button
                       type="button"
                       onClick={() => onSelectTender(t.id, 'my_tenders')}
-                      className="text-[11px] text-[#1A73E8] hover:underline mt-0.5"
+                      className="text-[11px] text-[#8AB4F8] hover:underline mt-0.5"
                     >
                       Open
                     </button>
@@ -358,30 +511,32 @@ export function DashboardView({
           )}
         </div>
 
-        <div className="lg:col-span-6 bg-white border border-[#DADCE0] rounded-xl p-6">
+        <div className="lg:col-span-6 neon-surface rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <PenTool className="w-4 h-4 text-[#1A73E8]" />
-              <h3 className="font-display text-base font-semibold text-[#202124]">
+              <PenTool className="w-4 h-4 text-[#669DF6]" />
+              <h3 className="font-display text-base font-semibold text-white">
                 AI Copilot Next Best Actions
               </h3>
             </div>
           </div>
 
           {recommendations.length === 0 ? (
-            <div className="py-8 text-center text-sm text-[#5F6368]">
+            <div className="py-8 text-center text-sm text-[#7B8499]">
               All active tenders have analysis, eligibility, risk, and proposal drafts initialized.
             </div>
           ) : (
             <div className="space-y-3">
               {recommendations.map((rec, i) => (
-                <div
+                <motion.div
                   key={i}
-                  className="p-3.5 rounded-lg border border-[#DADCE0] flex items-center justify-between gap-4"
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: 0.16 }}
+                  className="p-3.5 rounded-xl bg-white/[0.025] border border-white/[0.08] hover:border-[#4285F4]/40 transition-colors flex items-center justify-between gap-4"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#202124] truncate">{rec.title}</p>
-                    <p className="text-xs text-[#5F6368] mt-0.5 truncate">{rec.detail}</p>
+                    <p className="text-sm font-medium text-white truncate">{rec.title}</p>
+                    <p className="text-xs text-[#9AA0A6] mt-0.5 truncate">{rec.detail}</p>
                   </div>
                   <button
                     type="button"
@@ -390,12 +545,12 @@ export function DashboardView({
                         ? onSelectTender(rec.tenderId, rec.targetNav)
                         : onNavigate(rec.targetNav)
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1A73E8] text-white text-xs font-medium rounded-lg hover:bg-[#1557B0] whitespace-nowrap shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 neon-btn-primary text-xs font-medium rounded-lg whitespace-nowrap shrink-0"
                   >
                     {rec.actionLabel}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -403,29 +558,29 @@ export function DashboardView({
       </div>
 
       {/* Recently Analyzed Tenders Table */}
-      <div className="bg-white border border-[#DADCE0] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#E8EAED] flex items-center justify-between">
+      <div className="neon-surface rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between">
           <div>
-            <h3 className="font-display text-base font-semibold text-[#202124]">
+            <h3 className="font-display text-base font-semibold text-white">
               Recently Analyzed Tenders
             </h3>
-            <p className="text-xs text-[#5F6368]">
+            <p className="text-xs text-[#9AA0A6]">
               Structured AI analyses stored in your organization workspace
             </p>
           </div>
-          <span className="text-xs font-mono tabular-nums text-[#5F6368]">
+          <span className="text-xs font-mono tabular-nums text-[#8AB4F8]">
             {analyses.length} reports
           </span>
         </div>
 
         {analyses.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[#5F6368]">
+          <div className="p-8 text-center text-sm text-[#7B8499]">
             No tender documents analyzed yet. Open Document Analyzer to upload a PDF RFP.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[#F8F9FA] text-xs text-[#5F6368] border-b border-[#E8EAED]">
+              <thead className="bg-white/[0.03] text-xs text-[#9AA0A6] border-b border-white/[0.08]">
                 <tr>
                   <th className="px-6 py-3 font-medium">Tender</th>
                   <th className="px-6 py-3 font-medium">Authority</th>
@@ -434,33 +589,36 @@ export function DashboardView({
                   <th className="px-6 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E8EAED]">
+              <tbody className="divide-y divide-white/[0.06]">
                 {analyses.slice(0, 6).map((anl) => {
                   const t = tenders.find((item) => item.id === anl.tenderId);
                   return (
-                    <tr key={anl.id} className="hover:bg-[#F8F9FA]">
+                    <tr
+                      key={anl.id}
+                      className="hover:bg-[#4285F4]/[0.06] transition-colors"
+                    >
                       <td className="px-6 py-3.5">
-                        <p className="font-medium text-[#202124]">
+                        <p className="font-medium text-[#F1F3F4]">
                           {t?.title || anl.tenderMetadata?.referenceNumber || anl.tenderId}
                         </p>
-                        <p className="text-xs text-[#5F6368] font-mono mt-0.5">
+                        <p className="text-xs text-[#9AA0A6] font-mono mt-0.5">
                           {t?.referenceNumber || anl.tenderMetadata?.referenceNumber || 'N/A'}
                         </p>
                       </td>
-                      <td className="px-6 py-3.5 text-xs text-[#5F6368]">
+                      <td className="px-6 py-3.5 text-xs text-[#A7B0C0]">
                         {t?.authority || anl.tenderMetadata?.issuingAuthority || 'Not specified'}
                       </td>
                       <td className="px-6 py-3.5 text-xs">
-                        <span className="inline-flex items-center gap-1.5 font-medium text-[#3C4043]">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-[#E8EAED]">
                           {t?.eligibilityStatus === 'Eligible' ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#1E8E3E]" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#4ADE80]" />
                           ) : (
-                            <ShieldAlert className="w-3.5 h-3.5 text-[#F9AB00]" />
+                            <ShieldAlert className="w-3.5 h-3.5 text-[#FCD34D]" />
                           )}
                           {t?.eligibilityStatus || 'Pending'}
                         </span>
                       </td>
-                      <td className="px-6 py-3.5 text-right font-mono tabular-nums text-xs text-[#202124]">
+                      <td className="px-6 py-3.5 text-right font-mono tabular-nums text-xs text-[#F1F3F4]">
                         {t?.estimatedValueLakhs
                           ? `INR ${t.estimatedValueLakhs} L`
                           : anl.tenderMetadata?.estimatedValue || 'N/A'}
@@ -469,7 +627,7 @@ export function DashboardView({
                         <button
                           type="button"
                           onClick={() => onSelectTender(anl.tenderId, 'analyzer')}
-                          className="text-xs font-medium text-[#1A73E8] hover:underline"
+                          className="text-xs font-medium text-[#8AB4F8] hover:underline"
                         >
                           Open Report
                         </button>

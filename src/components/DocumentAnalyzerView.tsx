@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Download,
   FileSearch,
@@ -30,6 +31,7 @@ import type {
   TenderRecord,
   UserProfile,
 } from '../types/procurement.ts';
+import { EASE_OUT_EXPO, SPRING_SNAPPY } from './NeonPrimitives.tsx';
 
 interface DocumentAnalyzerViewProps {
   organization: Organization;
@@ -215,13 +217,13 @@ export function DocumentAnalyzerView({
   return (
     <div className="space-y-6">
       {/* Upload & Tender Target Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+      <div className="neon-surface rounded-2xl p-6 space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="font-display text-lg font-bold text-slate-900">
+            <h2 className="font-display text-lg font-bold text-white">
               AI Tender Document Analyzer &amp; Vector Indexer
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#9AA0A6] mt-0.5">
               Extracts text &amp; tables, creates Gemini vector embeddings for RAG, and produces a
               page-cited structured analysis report.
             </p>
@@ -230,32 +232,33 @@ export function DocumentAnalyzerView({
             <button
               type="button"
               onClick={() => downloadSampleTenderPdf().catch((e) => onError(e.message))}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg"
             >
               <Download className="w-3.5 h-3.5" />
               Download Sample RFP PDF
             </button>
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.97 }}
               disabled={Boolean(processingStage)}
               onClick={() => runPdfPipeline(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-[#E8F0FE] text-[#1967D2] border border-[#D2E3FC] rounded-lg hover:bg-[#D2E3FC]/70 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-[#4285F4]/18 text-[#8AB4F8] border border-[#4285F4]/45 rounded-lg hover:bg-[#4285F4]/28 transition-colors disabled:opacity-60"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Test Full Pipeline with Sample PDF
-            </button>
+            </motion.button>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-4 items-center">
           <div className="lg:col-span-4">
-            <label className="block text-xs font-medium text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-[#C4CBD6] mb-1">
               Target Workspace Tender (or creates new)
             </label>
             <select
               value={activeTender?.id || ''}
               onChange={(e) => onSelectTender(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2.5 text-sm neon-input rounded-xl"
             >
               <option value="">Create new tender from uploaded PDF</option>
               {tenders.map((t) => (
@@ -267,48 +270,61 @@ export function DocumentAnalyzerView({
           </div>
 
           <div className="lg:col-span-5">
-            <label className="block text-xs font-medium text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-[#C4CBD6] mb-1">
               Upload Tender PDF (Max 20 MB)
             </label>
             <input
               type="file"
               accept="application/pdf,.pdf"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-lg file:border file:border-slate-300 file:text-xs file:font-medium file:bg-slate-50 file:text-slate-800 hover:file:bg-slate-100"
+              className="block w-full text-xs text-[#A7B0C0] file:mr-3 file:py-2 file:px-3.5 file:rounded-lg file:border file:border-white/15 file:text-xs file:font-medium file:bg-white/[0.06] file:text-white hover:file:bg-[#4285F4]/20"
             />
           </div>
 
           <div className="lg:col-span-3 flex items-end pt-4 lg:pt-5">
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.97 }}
               disabled={!selectedFile || Boolean(processingStage)}
               onClick={() => runPdfPipeline(false)}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl disabled:opacity-50"
             >
               <FileUp className="w-4 h-4" />
               Parse &amp; Analyze PDF
-            </button>
+            </motion.button>
           </div>
         </div>
 
-        {processingStage && (
-          <div className="p-3.5 rounded-lg bg-[#E8F0FE] border border-[#D2E3FC] text-xs font-medium text-[#174EA6] flex items-center gap-2.5">
-            <div className="w-4 h-4 border-2 border-[#1A73E8] border-t-transparent rounded-full animate-spin" />
-            {processingStage}
-          </div>
-        )}
+        <AnimatePresence>
+          {processingStage && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="p-4 rounded-xl bg-[#4285F4]/14 border border-[#4285F4]/40 text-xs font-medium text-[#AECBFA] space-y-2.5"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-4 h-4 border-2 border-[#669DF6] border-t-transparent rounded-full animate-spin" />
+                {processingStage}
+              </div>
+              <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full w-full google-spectrum-bar" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* RAG Q&A over Indexed Chunks */}
       {activeDoc && chunks.length > 0 && (
-        <div className="bg-white border border-[#DADCE0] rounded-xl p-5 space-y-3">
+        <div className="neon-surface rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[#202124]">
-              <MessageSquareText className="w-4 h-4 text-[#1A73E8]" />
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <MessageSquareText className="w-4 h-4 text-[#669DF6]" />
               Ask Tender Document (Vector RAG · {chunks.length} indexed chunks from{' '}
               {activeDoc.fileName})
             </div>
-            <span className="text-xs font-mono text-[#5F6368]">{activeDoc.pageCount} pages</span>
+            <span className="text-xs font-mono text-[#9AA0A6]">{activeDoc.pageCount} pages</span>
           </div>
 
           <form onSubmit={handleAskRag} className="flex gap-2">
@@ -317,63 +333,71 @@ export function DocumentAnalyzerView({
               value={ragQuestion}
               onChange={(e) => setRagQuestion(e.target.value)}
               placeholder="Ask e.g. 'What is the EMD amount and liquidated damages cap?'"
-              className="flex-1 px-3.5 py-2 text-sm border border-[#DADCE0] rounded-lg focus:outline-none focus:border-[#1A73E8]"
+              className="flex-1 px-3.5 py-2 text-sm neon-input rounded-xl"
             />
-            <button
+            <motion.button
               type="submit"
+              whileTap={{ scale: 0.97 }}
               disabled={ragLoading || !ragQuestion.trim()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 px-4 py-2 neon-btn-primary text-sm font-medium rounded-xl disabled:opacity-60"
             >
               <Send className="w-3.5 h-3.5" />
               {ragLoading ? 'Searching...' : 'Ask'}
-            </button>
+            </motion.button>
           </form>
 
-          {ragAnswer && (
-            <div className="p-4 rounded-lg bg-[#F8F9FA] border border-[#DADCE0] space-y-2 text-sm">
-              <p className="text-[#202124] leading-relaxed">{ragAnswer.answer}</p>
-              {ragAnswer.citations.length > 0 && (
-                <div className="pt-2 border-t border-[#E8EAED] space-y-1.5">
-                  <p className="text-xs font-semibold text-[#5F6368]">Retrieved Citations:</p>
-                  {ragAnswer.citations.map((c, idx) => (
-                    <p key={idx} className="text-xs text-[#5F6368]">
-                      <span className="font-mono font-semibold text-[#1A73E8]">
-                        [Page {c.pageNumber}]
-                      </span>{' '}
-                      “{c.excerpt}”
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <AnimatePresence>
+            {ragAnswer && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 text-sm"
+              >
+                <p className="text-[#F1F3F4] leading-relaxed">{ragAnswer.answer}</p>
+                {ragAnswer.citations.length > 0 && (
+                  <div className="pt-2 border-t border-white/[0.08] space-y-1.5">
+                    <p className="text-xs font-semibold text-[#9AA0A6]">Retrieved Citations:</p>
+                    {ragAnswer.citations.map((c, idx) => (
+                      <p key={idx} className="text-xs text-[#A7B0C0]">
+                        <span className="font-mono font-semibold text-[#8AB4F8]">
+                          [Page {c.pageNumber}]
+                        </span>{' '}
+                        “{c.excerpt}”
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
       {/* Structured Analysis Report */}
       {!activeAnalysis ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-3">
-          <FileSearch className="w-8 h-8 text-slate-400 mx-auto" />
-          <h3 className="font-display text-base font-semibold text-slate-900">
+        <div className="neon-surface rounded-2xl p-12 text-center space-y-3">
+          <FileSearch className="w-8 h-8 text-[#669DF6] mx-auto" />
+          <h3 className="font-display text-base font-semibold text-white">
             No Analysis Report Selected
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-[#9AA0A6] max-w-md mx-auto">
             Upload a tender PDF above or click “Test Full Pipeline with Sample PDF” to extract
             requirements, dates, EMD, technical specs, and risks with page citations.
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="neon-surface rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-display text-base font-bold text-slate-900">
+              <h3 className="font-display text-base font-bold text-white">
                 Structured Tender Analysis Report
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#9AA0A6] mt-0.5">
                 {activeTender?.referenceNumber} · Evidence cited from source pages
               </p>
             </div>
-            <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-lg">
+            <div className="flex flex-wrap gap-1 p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl">
               {(
                 [
                   ['overview', 'Executive Overview'],
@@ -388,139 +412,167 @@ export function DocumentAnalyzerView({
                   key={tabId}
                   type="button"
                   onClick={() => setActiveTab(tabId)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                    activeTab === tabId
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
+                  className={`relative px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    activeTab === tabId ? 'text-white' : 'text-[#9AA0A6] hover:text-white'
                   }`}
                 >
-                  {label}
+                  {activeTab === tabId && (
+                    <motion.div
+                      layoutId="analyzerActiveTab"
+                      transition={SPRING_SNAPPY}
+                      className="absolute inset-0 rounded-lg bg-[#4285F4]/22 border border-[#4285F4]/50"
+                    />
+                  )}
+                  <span className="relative z-10">{label}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                    Executive Summary
-                  </h4>
-                  <p className="text-sm text-slate-800 leading-relaxed">
-                    {activeAnalysis.executiveSummary}
-                  </p>
-                </div>
-
-                {activeAnalysis.tenderMetadata && (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-200 text-xs">
-                    {[
-                      ['Reference No', activeAnalysis.tenderMetadata.referenceNumber],
-                      ['Issuing Authority', activeAnalysis.tenderMetadata.issuingAuthority],
-                      ['Estimated Value', activeAnalysis.tenderMetadata.estimatedValue],
-                      ['EMD Requirement', activeAnalysis.tenderMetadata.emdRequirement],
-                      ['Tender Fee', activeAnalysis.tenderMetadata.tenderFee],
-                      ['Performance Security', activeAnalysis.tenderMetadata.performanceSecurity],
-                      ['Submission Deadline', activeAnalysis.tenderMetadata.submissionDeadline],
-                      ['Bid Validity', activeAnalysis.tenderMetadata.bidValidityDays],
-                    ].map(([k, v]) => (
-                      <div key={k} className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                        <p className="text-slate-500">{k}</p>
-                        <p className="font-medium text-slate-900 mt-1">{v || 'Not specified'}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'eligibility' && (
-              <FindingsList
-                items={activeAnalysis.eligibilityCriteria || []}
-                emptyText="No explicit eligibility clauses extracted."
-              />
-            )}
-
-            {activeTab === 'technical' && (
-              <FindingsList
-                items={activeAnalysis.technicalSpecs || []}
-                emptyText="No technical specifications extracted."
-              />
-            )}
-
-            {activeTab === 'financial' && (
-              <div className="space-y-6">
-                <FindingsList
-                  items={activeAnalysis.financialRequirements || []}
-                  emptyText="No financial requirements extracted."
-                />
-                <div className="pt-4 border-t border-slate-200">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-3">
-                    Mandatory Submission Documents
-                  </h4>
-                  <FindingsList
-                    items={activeAnalysis.mandatoryDocuments || []}
-                    emptyText="No mandatory document checklist extracted."
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'dates' && (
-              <div className="divide-y divide-slate-100">
-                {(activeAnalysis.importantDates || []).length === 0 ? (
-                  <p className="text-sm text-slate-500">No dates extracted.</p>
-                ) : (
-                  (activeAnalysis.importantDates || []).map((d, idx) => (
-                    <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-[#202124]">{d.event}</p>
-                        <p className="text-xs text-[#5F6368] mt-0.5">
-                          <span className="font-mono text-[#1A73E8]">{d.sourcePage}</span> · “
-                          {d.evidenceQuote}”
-                        </p>
-                      </div>
-                      <span className="font-mono tabular-nums text-sm font-semibold text-[#202124] shrink-0">
-                        {d.dateValue}
-                      </span>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
+              >
+                {activeTab === 'overview' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-xs font-semibold text-[#8AB4F8] mb-2">
+                        Executive Summary
+                      </h4>
+                      <p className="text-sm text-[#E8EAED] leading-relaxed">
+                        {activeAnalysis.executiveSummary}
+                      </p>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
 
-            {activeTab === 'risks' && (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold text-[#202124] mb-3">
-                    Disqualification Conditions
-                  </h4>
-                  <FindingsList
-                    items={activeAnalysis.disqualificationConditions || []}
-                    emptyText="No explicit disqualification triggers extracted."
-                  />
-                </div>
-                <div className="pt-4 border-t border-[#E8EAED]">
-                  <h4 className="text-sm font-semibold text-[#202124] mb-3">
-                    Initial Risk &amp; Ambiguity Clauses
-                  </h4>
-                  <div className="space-y-3">
-                    {(activeAnalysis.initialRisks || []).map((r, idx) => (
-                      <div key={idx} className="p-4 rounded-lg border border-[#DADCE0]">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-xs font-semibold text-[#B06000]">
-                            Severity: {r.severity}
-                          </span>
-                          <span className="text-xs font-mono text-[#1A73E8]">{r.sourcePage}</span>
-                        </div>
-                        <p className="text-sm font-medium text-[#202124]">{r.clause}</p>
-                        <p className="text-xs text-[#5F6368] mt-1">Evidence: “{r.evidenceQuote}”</p>
+                    {activeAnalysis.tenderMetadata && (
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-white/[0.08] text-xs">
+                        {[
+                          ['Reference No', activeAnalysis.tenderMetadata.referenceNumber],
+                          ['Issuing Authority', activeAnalysis.tenderMetadata.issuingAuthority],
+                          ['Estimated Value', activeAnalysis.tenderMetadata.estimatedValue],
+                          ['EMD Requirement', activeAnalysis.tenderMetadata.emdRequirement],
+                          ['Tender Fee', activeAnalysis.tenderMetadata.tenderFee],
+                          ['Performance Security', activeAnalysis.tenderMetadata.performanceSecurity],
+                          ['Submission Deadline', activeAnalysis.tenderMetadata.submissionDeadline],
+                          ['Bid Validity', activeAnalysis.tenderMetadata.bidValidityDays],
+                        ].map(([k, v]) => (
+                          <div
+                            key={k}
+                            className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+                          >
+                            <p className="text-[#7B8499]">{k}</p>
+                            <p className="font-medium text-white mt-1">{v || 'Not specified'}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              </div>
-            )}
+                )}
+
+                {activeTab === 'eligibility' && (
+                  <FindingsList
+                    items={activeAnalysis.eligibilityCriteria || []}
+                    emptyText="No explicit eligibility clauses extracted."
+                  />
+                )}
+
+                {activeTab === 'technical' && (
+                  <FindingsList
+                    items={activeAnalysis.technicalSpecs || []}
+                    emptyText="No technical specifications extracted."
+                  />
+                )}
+
+                {activeTab === 'financial' && (
+                  <div className="space-y-6">
+                    <FindingsList
+                      items={activeAnalysis.financialRequirements || []}
+                      emptyText="No financial requirements extracted."
+                    />
+                    <div className="pt-4 border-t border-white/[0.08]">
+                      <h4 className="text-sm font-semibold text-white mb-3">
+                        Mandatory Submission Documents
+                      </h4>
+                      <FindingsList
+                        items={activeAnalysis.mandatoryDocuments || []}
+                        emptyText="No mandatory document checklist extracted."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'dates' && (
+                  <div className="divide-y divide-white/[0.06]">
+                    {(activeAnalysis.importantDates || []).length === 0 ? (
+                      <p className="text-sm text-[#7B8499]">No dates extracted.</p>
+                    ) : (
+                      (activeAnalysis.importantDates || []).map((d, idx) => (
+                        <div
+                          key={idx}
+                          className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-white">{d.event}</p>
+                            <p className="text-xs text-[#9AA0A6] mt-0.5">
+                              <span className="font-mono text-[#8AB4F8]">{d.sourcePage}</span> · “
+                              {d.evidenceQuote}”
+                            </p>
+                          </div>
+                          <span className="font-mono tabular-nums text-sm font-semibold text-[#FCD34D] shrink-0">
+                            {d.dateValue}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'risks' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white mb-3">
+                        Disqualification Conditions
+                      </h4>
+                      <FindingsList
+                        items={activeAnalysis.disqualificationConditions || []}
+                        emptyText="No explicit disqualification triggers extracted."
+                      />
+                    </div>
+                    <div className="pt-4 border-t border-white/[0.08]">
+                      <h4 className="text-sm font-semibold text-white mb-3">
+                        Initial Risk &amp; Ambiguity Clauses
+                      </h4>
+                      <div className="space-y-3">
+                        {(activeAnalysis.initialRisks || []).map((r, idx) => (
+                          <div
+                            key={idx}
+                            className="p-4 rounded-xl bg-white/[0.025] border border-white/[0.08]"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-xs font-semibold text-[#FCD34D]">
+                                Severity: {r.severity}
+                              </span>
+                              <span className="text-xs font-mono text-[#8AB4F8]">
+                                {r.sourcePage}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-white">{r.clause}</p>
+                            <p className="text-xs text-[#9AA0A6] mt-1">
+                              Evidence: “{r.evidenceQuote}”
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       )}
@@ -542,20 +594,23 @@ function FindingsList({
   emptyText: string;
 }) {
   if (items.length === 0) {
-    return <p className="text-sm text-[#5F6368]">{emptyText}</p>;
+    return <p className="text-sm text-[#7B8499]">{emptyText}</p>;
   }
   return (
     <div className="space-y-3">
       {items.map((f, idx) => (
-        <div key={idx} className="p-4 rounded-lg border border-[#DADCE0] space-y-1.5">
+        <div
+          key={idx}
+          className="p-4 rounded-xl bg-white/[0.025] border border-white/[0.08] space-y-1.5 hover:border-[#4285F4]/35 transition-colors"
+        >
           <div className="flex items-center justify-between gap-3 text-xs">
-            <span className="text-[#5F6368]">
+            <span className="text-[#9AA0A6]">
               {f.category || 'Requirement'} · {f.mandatory === false ? 'Optional' : 'Mandatory'}
             </span>
-            <span className="font-mono font-medium text-[#1A73E8]">{f.sourcePage}</span>
+            <span className="font-mono font-medium text-[#8AB4F8]">{f.sourcePage}</span>
           </div>
-          <p className="text-sm font-medium text-[#202124]">{f.item}</p>
-          <p className="text-xs text-[#5F6368]">Source quote: “{f.evidenceQuote}”</p>
+          <p className="text-sm font-medium text-white">{f.item}</p>
+          <p className="text-xs text-[#A7B0C0]">Source quote: “{f.evidenceQuote}”</p>
         </div>
       ))}
     </div>

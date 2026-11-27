@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   CheckCircle2,
   Download,
@@ -28,6 +29,7 @@ import type {
   TenderRecord,
   UserProfile,
 } from '../types/procurement.ts';
+import { EASE_OUT_EXPO } from './NeonPrimitives.tsx';
 
 const PROPOSAL_TEMPLATES = [
   'Technical Proposal (Complete)',
@@ -140,7 +142,6 @@ export function ProposalCoAuthorView({
       setSections(res.proposal.sections || []);
       setComplianceNotes(res.proposal.complianceNotes || []);
 
-      // Persist immediately as v1 or next version
       await persistProposal(
         res.proposal.title || title,
         res.proposal.sections || [],
@@ -276,7 +277,8 @@ export function ProposalCoAuthorView({
       const res = await verifyProposalComplianceWithAi({
         tenderTitle: activeTender.title,
         sections: sections.map((s) => ({ heading: s.heading, content: s.content })),
-        mandatoryRequirements: activeAnalysis?.mandatoryDocuments || activeAnalysis?.technicalSpecs || [],
+        mandatoryRequirements:
+          activeAnalysis?.mandatoryDocuments || activeAnalysis?.technicalSpecs || [],
       });
       setVerificationResult(res.verification);
       onNotify(`Compliance verification complete: ${res.verification.overallReadiness}.`);
@@ -316,13 +318,13 @@ export function ProposalCoAuthorView({
   return (
     <div className="space-y-6">
       {/* Studio Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+      <div className="neon-surface rounded-2xl p-6 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="font-display text-lg font-bold text-[#202124]">
+            <h2 className="font-display text-lg font-bold text-white">
               Bid Tender Writer — AI Proposal Writing Studio
             </h2>
-            <p className="text-xs text-[#5F6368] mt-0.5">
+            <p className="text-xs text-[#9AA0A6] mt-0.5">
               Grounded strictly in tender evidence and {organization.name}’s verified profile.
               Unverified items are flagged as [USER INPUT REQUIRED].
             </p>
@@ -332,16 +334,16 @@ export function ProposalCoAuthorView({
               type="button"
               disabled={sections.length === 0 || verifying}
               onClick={handleVerifyCompliance}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg disabled:opacity-50"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#1A73E8]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#4ADE80]" />
               {verifying ? 'Verifying...' : 'Verify Compliance'}
             </button>
             <button
               type="button"
               disabled={sections.length === 0 || saving}
               onClick={handleSaveDraft}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               {saving ? 'Saving...' : 'Save Version'}
@@ -350,32 +352,33 @@ export function ProposalCoAuthorView({
               type="button"
               disabled={sections.length === 0}
               onClick={() => handleExport('docx')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-[#E8F0FE] text-[#1967D2] border border-[#D2E3FC] rounded-lg hover:bg-[#D2E3FC]/70 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-[#4285F4]/18 text-[#8AB4F8] border border-[#4285F4]/45 rounded-lg hover:bg-[#4285F4]/28 transition-colors disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
               Export DOCX
             </button>
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.97 }}
               disabled={sections.length === 0}
               onClick={() => handleExport('pdf')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-[#1A73E8] text-white rounded-lg hover:bg-[#1557B0] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium neon-btn-primary rounded-lg disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
               Export PDF
-            </button>
+            </motion.button>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid lg:grid-cols-12 gap-3 pt-3 border-t border-white/[0.08]">
           <div className="lg:col-span-4">
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
+            <label className="block text-[11px] font-medium text-[#9AA0A6] mb-1">
               Target Tender
             </label>
             <select
               value={activeTender?.id || ''}
               onChange={(e) => onSelectTender(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-sm neon-input rounded-xl"
             >
               {tenders.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -385,13 +388,13 @@ export function ProposalCoAuthorView({
             </select>
           </div>
           <div className="lg:col-span-3">
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
+            <label className="block text-[11px] font-medium text-[#9AA0A6] mb-1">
               Document Type / Template
             </label>
             <select
               value={templateType}
               onChange={(e) => setTemplateType(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-sm neon-input rounded-xl"
             >
               {PROPOSAL_TEMPLATES.map((tpl) => (
                 <option key={tpl} value={tpl}>
@@ -401,7 +404,7 @@ export function ProposalCoAuthorView({
             </select>
           </div>
           <div className="lg:col-span-3">
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
+            <label className="block text-[11px] font-medium text-[#9AA0A6] mb-1">
               Drafting Focus (Optional)
             </label>
             <input
@@ -409,65 +412,72 @@ export function ProposalCoAuthorView({
               value={customInstructions}
               onChange={(e) => setCustomInstructions(e.target.value)}
               placeholder="e.g. Emphasize 99.5% SLA & local support"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg"
+              className="w-full px-3 py-2 text-sm neon-input rounded-xl"
             />
           </div>
           <div className="lg:col-span-2 flex items-end">
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.97 }}
               disabled={!activeTender || generating}
               onClick={handleGenerateFull}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] disabled:opacity-60 whitespace-nowrap"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl disabled:opacity-60 whitespace-nowrap"
             >
               <PenTool className="w-4 h-4 text-white" />
               {generating ? 'Drafting...' : 'Generate Draft'}
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Compliance Verification Banner */}
-      {verificationResult && (
-        <div className="bg-white border border-[#DADCE0] rounded-xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[#202124]">
-              <CheckCircle2 className="w-4 h-4 text-[#1E8E3E]" />
+      <AnimatePresence>
+        {verificationResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+            className="neon-surface rounded-2xl p-5 space-y-3 border-[#34A853]/35"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <CheckCircle2 className="w-4 h-4 text-[#4ADE80]" />
               Compliance Verification: {verificationResult.overallReadiness}
             </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4 text-xs">
-            <div>
-              <p className="font-semibold text-[#3C4043] mb-1">Verification Notes</p>
-              <ul className="list-disc pl-4 space-y-1 text-[#5F6368]">
-                {verificationResult.verificationNotes.map((n, i) => (
-                  <li key={i}>{n}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold text-[#B06000] mb-1">Unresolved User Inputs</p>
-              {verificationResult.unresolvedPlaceholders.length === 0 ? (
-                <p className="text-[#1E8E3E]">No unresolved placeholders detected.</p>
-              ) : (
-                <ul className="list-disc pl-4 space-y-1 text-[#B06000]">
-                  {verificationResult.unresolvedPlaceholders.map((p, i) => (
-                    <li key={i}>{p}</li>
+            <div className="grid md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <p className="font-semibold text-[#C4CBD6] mb-1">Verification Notes</p>
+                <ul className="list-disc pl-4 space-y-1 text-[#9AA0A6]">
+                  {verificationResult.verificationNotes.map((n, i) => (
+                    <li key={i}>{n}</li>
                   ))}
                 </ul>
-              )}
+              </div>
+              <div>
+                <p className="font-semibold text-[#FCD34D] mb-1">Unresolved User Inputs</p>
+                {verificationResult.unresolvedPlaceholders.length === 0 ? (
+                  <p className="text-[#4ADE80]">No unresolved placeholders detected.</p>
+                ) : (
+                  <ul className="list-disc pl-4 space-y-1 text-[#FCD34D]">
+                    {verificationResult.unresolvedPlaceholders.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Editor + Version History Split */}
       {sections.length === 0 ? (
-        <div className="bg-white border border-[#DADCE0] rounded-xl p-12 text-center space-y-2">
-          <PenTool className="w-8 h-8 text-[#5F6368] mx-auto" />
-          <h3 className="font-display text-base font-semibold text-[#202124]">
+        <div className="neon-surface rounded-2xl p-12 text-center space-y-2">
+          <PenTool className="w-8 h-8 text-[#669DF6] mx-auto" />
+          <h3 className="font-display text-base font-semibold text-white">
             Ready to Write Proposal
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-[#9AA0A6] max-w-md mx-auto">
             Choose a tender and proposal document type above, then click “Generate Draft” to build
             editable, tender-grounded sections ready for DOCX and PDF export.
           </p>
@@ -475,23 +485,20 @@ export function ProposalCoAuthorView({
       ) : (
         <div className="grid lg:grid-cols-12 gap-6">
           <div className="lg:col-span-9 space-y-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <label className="block text-xs font-medium text-slate-500 mb-1">
+            <div className="neon-surface rounded-2xl p-5">
+              <label className="block text-xs font-medium text-[#9AA0A6] mb-1.5">
                 Proposal Title
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full font-display text-lg font-bold text-slate-900 px-3 py-2 border border-slate-200 rounded-lg"
+                className="w-full font-display text-lg font-bold text-white px-3.5 py-2 neon-input rounded-xl"
               />
             </div>
 
             {sections.map((section) => (
-              <div
-                key={section.id}
-                className="bg-white border border-slate-200 rounded-xl p-5 space-y-3"
-              >
+              <div key={section.id} className="neon-surface rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <input
                     type="text"
@@ -503,13 +510,13 @@ export function ProposalCoAuthorView({
                         ),
                       )
                     }
-                    className="font-display text-base font-semibold text-[#202124] flex-1 px-2 py-1 border border-transparent hover:border-[#DADCE0] focus:border-[#1A73E8] rounded focus:outline-none"
+                    className="font-display text-base font-semibold text-white bg-transparent flex-1 px-2 py-1 border border-transparent hover:border-white/15 focus:border-[#4285F4] rounded-lg focus:outline-none"
                   />
                   <button
                     type="button"
                     disabled={regenSectionId === section.id}
                     onClick={() => handleRegenerateSection(section)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] shrink-0 disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium neon-btn-secondary rounded-lg shrink-0 disabled:opacity-60"
                   >
                     <RefreshCw
                       className={`w-3.5 h-3.5 ${regenSectionId === section.id ? 'animate-spin' : ''}`}
@@ -528,11 +535,11 @@ export function ProposalCoAuthorView({
                       ),
                     )
                   }
-                  className="w-full p-3.5 text-sm text-[#202124] leading-relaxed border border-[#DADCE0] rounded-lg focus:outline-none focus:border-[#1A73E8]"
+                  className="w-full p-3.5 text-sm leading-relaxed neon-input rounded-xl"
                 />
 
                 {section.missingInputs && section.missingInputs.length > 0 && (
-                  <div className="p-3 rounded-lg bg-[#FEF7E0] border border-[#FDE293] text-xs text-[#B06000]">
+                  <div className="p-3 rounded-xl bg-[#FBBC04]/12 border border-[#FBBC04]/35 text-xs text-[#FCD34D]">
                     <span className="font-semibold">Inputs Required from Bidder: </span>
                     {section.missingInputs.join(' · ')}
                   </div>
@@ -542,34 +549,34 @@ export function ProposalCoAuthorView({
           </div>
 
           <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white border border-[#DADCE0] rounded-xl p-5 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#202124]">
-                <History className="w-4 h-4 text-[#1A73E8]" />
+            <div className="neon-surface rounded-2xl p-5 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <History className="w-4 h-4 text-[#8AB4F8]" />
                 Version History
               </div>
               {!existingProposal?.versions?.length ? (
-                <p className="text-xs text-[#5F6368]">No saved versions yet.</p>
+                <p className="text-xs text-[#7B8499]">No saved versions yet.</p>
               ) : (
                 <div className="space-y-2">
                   {existingProposal.versions.map((v) => (
                     <div
                       key={v.versionNumber}
-                      className="p-3 rounded-lg border border-[#DADCE0] text-xs space-y-1"
+                      className="p-3 rounded-xl bg-white/[0.025] border border-white/[0.08] text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-semibold text-[#202124]">
+                        <span className="font-mono font-semibold text-white">
                           Version {v.versionNumber}
                         </span>
                         <button
                           type="button"
                           onClick={() => restoreVersion(v.versionNumber)}
-                          className="text-[#1A73E8] hover:underline font-medium"
+                          className="text-[#8AB4F8] hover:underline font-medium"
                         >
                           Load
                         </button>
                       </div>
-                      <p className="text-slate-600">{v.note}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[#A7B0C0]">{v.note}</p>
+                      <p className="text-[11px] text-[#7B8499]">
                         {v.savedBy} · {v.savedAt.slice(0, 10)}
                       </p>
                     </div>
@@ -579,9 +586,9 @@ export function ProposalCoAuthorView({
             </div>
 
             {complianceNotes.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-2">
-                <h4 className="text-xs font-semibold text-slate-900">AI Drafting Notes</h4>
-                <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-600">
+              <div className="neon-surface rounded-2xl p-5 space-y-2">
+                <h4 className="text-xs font-semibold text-white">AI Drafting Notes</h4>
+                <ul className="list-disc pl-4 space-y-1.5 text-xs text-[#A7B0C0]">
                   {complianceNotes.map((n, i) => (
                     <li key={i}>{n}</li>
                   ))}

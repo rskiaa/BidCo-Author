@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Bell,
   BellOff,
@@ -23,6 +24,7 @@ import type {
   UserProfile,
 } from '../types/procurement.ts';
 import type { NavSection } from './SidebarLayout.tsx';
+import { EASE_OUT_EXPO } from './NeonPrimitives.tsx';
 
 const ALL_STATUSES: TenderStatus[] = [
   'Discovered',
@@ -60,7 +62,6 @@ export function MyTendersView({
   const [statusFilter, setStatusFilter] = useState<'all' | TenderStatus>('all');
   const [showCreate, setShowCreate] = useState(false);
 
-  // Manual tender form state
   const [refNum, setRefNum] = useState('');
   const [title, setTitle] = useState('');
   const [authority, setAuthority] = useState('');
@@ -211,22 +212,22 @@ export function MyTendersView({
   return (
     <div className="space-y-6">
       {/* Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="neon-surface rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative flex-1 min-w-[220px] max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-[#7B8499] absolute left-3.5 top-3" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Filter workspace tenders..."
-              className="w-full pl-10 pr-3.5 py-2 text-sm border border-slate-300 rounded-lg"
+              className="w-full pl-10 pr-3.5 py-2 text-sm neon-input rounded-xl"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | TenderStatus)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white"
+            className="px-3 py-2 text-sm neon-input rounded-xl"
           >
             <option value="all">All Statuses ({tenders.length})</option>
             {ALL_STATUSES.map((s) => (
@@ -236,124 +237,124 @@ export function MyTendersView({
             ))}
           </select>
         </div>
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.97 }}
           onClick={() => setShowCreate((v) => !v)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] whitespace-nowrap shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4" />
           Add Tender Manually
-        </button>
+        </motion.button>
       </div>
 
-      {showCreate && (
-        <form
-          onSubmit={handleCreateManualTender}
-          className="bg-white border border-slate-200 rounded-xl p-6 space-y-4"
-        >
-          <h3 className="font-display text-base font-semibold text-slate-900">
-            New Tender Record
-          </h3>
-          <div className="grid sm:grid-cols-3 gap-4">
-            <input
-              type="text"
-              required
-              placeholder="Reference No (e.g. GEM/2026/B/102)"
-              value={refNum}
-              onChange={(e) => setRefNum(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono"
-            />
-            <input
-              type="text"
-              required
-              placeholder="Tender Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg sm:col-span-2"
-            />
-          </div>
-          <div className="grid sm:grid-cols-4 gap-4">
-            <input
-              type="text"
-              required
-              placeholder="Issuing Authority"
-              value={authority}
-              onChange={(e) => setAuthority(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg"
-            />
-            <input
-              type="text"
-              placeholder="Industry"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg"
-            />
-            <input
-              type="number"
-              placeholder="Budget (INR Lakhs)"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono"
-            />
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono"
-            />
-          </div>
-          <div className="grid sm:grid-cols-4 gap-4">
-            <input
-              type="number"
-              placeholder="EMD (INR Lakhs)"
-              value={emd}
-              onChange={(e) => setEmd(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono"
-            />
-            <input
-              type="text"
-              placeholder="Scope Summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg sm:col-span-3"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCreate(false)}
-              className="px-4 py-2 text-sm border border-slate-300 rounded-lg"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm bg-[#1A73E8] text-white rounded-lg hover:bg-[#1557B0]"
-            >
-              Save Tender
-            </button>
-          </div>
-        </form>
-      )}
+      <AnimatePresence>
+        {showCreate && (
+          <motion.form
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+            onSubmit={handleCreateManualTender}
+            className="neon-surface rounded-2xl p-6 space-y-4 border-[#4285F4]/35"
+          >
+            <h3 className="font-display text-base font-semibold text-white">New Tender Record</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <input
+                type="text"
+                required
+                placeholder="Reference No (e.g. GEM/2026/B/102)"
+                value={refNum}
+                onChange={(e) => setRefNum(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl font-mono"
+              />
+              <input
+                type="text"
+                required
+                placeholder="Tender Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl sm:col-span-2"
+              />
+            </div>
+            <div className="grid sm:grid-cols-4 gap-4">
+              <input
+                type="text"
+                required
+                placeholder="Issuing Authority"
+                value={authority}
+                onChange={(e) => setAuthority(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl"
+              />
+              <input
+                type="text"
+                placeholder="Industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl"
+              />
+              <input
+                type="number"
+                placeholder="Budget (INR Lakhs)"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl font-mono"
+              />
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl font-mono"
+              />
+            </div>
+            <div className="grid sm:grid-cols-4 gap-4">
+              <input
+                type="number"
+                placeholder="EMD (INR Lakhs)"
+                value={emd}
+                onChange={(e) => setEmd(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl font-mono"
+              />
+              <input
+                type="text"
+                placeholder="Scope Summary"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                className="px-3 py-2 text-sm neon-input rounded-xl sm:col-span-3"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="px-4 py-2 text-sm neon-btn-secondary rounded-xl"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="px-4 py-2 text-sm neon-btn-primary rounded-xl">
+                Save Tender
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       {/* Workspace Split: Table + Selected Tender Control Panel */}
       <div className="grid xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 className="font-display text-base font-semibold text-slate-900">
-              Tracked Tenders
-            </h3>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
+        <div className="xl:col-span-7 neon-surface rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
+            <h3 className="font-display text-base font-semibold text-white">Tracked Tenders</h3>
+            <span className="text-xs font-mono tabular-nums text-[#8AB4F8]">
               {filtered.length} active
             </span>
           </div>
 
           {filtered.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500">
+            <div className="p-10 text-center text-sm text-[#7B8499]">
               No tenders in workspace. Save tenders from Discover Tenders or upload a PDF.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-white/[0.06]">
               {filtered.map((t) => {
                 const isSelected = activeTender?.id === t.id;
                 return (
@@ -361,20 +362,22 @@ export function MyTendersView({
                     key={t.id}
                     onClick={() => onSelectTender(t.id)}
                     className={`p-4 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-[#E8F0FE]/70' : 'hover:bg-[#F8F9FA]'
+                      isSelected
+                        ? 'bg-[#4285F4]/14'
+                        : 'hover:bg-white/[0.03]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-mono text-slate-500 truncate">
+                        <p className="text-xs font-mono text-[#8AB4F8] truncate">
                           {t.referenceNumber} · {t.sourcePortal || t.sourceType}
                         </p>
-                        <p className="font-medium text-sm text-slate-900 mt-0.5 line-clamp-2">
+                        <p className="font-medium text-sm text-white mt-0.5 line-clamp-2">
                           {t.title}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-[#9AA0A6] mt-1">
                           {t.authority} · Deadline: {t.deadlineDate || 'TBD'} · Eligibility:{' '}
-                          <span className="font-medium text-slate-800">
+                          <span className="font-medium text-[#E8EAED]">
                             {t.eligibilityStatus || 'Not Checked'}
                           </span>
                         </p>
@@ -383,7 +386,7 @@ export function MyTendersView({
                         value={t.status}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleStatusChange(t, e.target.value as TenderStatus)}
-                        className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white text-slate-800 shrink-0"
+                        className="px-2.5 py-1.5 text-xs neon-input rounded-lg shrink-0"
                       >
                         {ALL_STATUSES.map((s) => (
                           <option key={s} value={s}>
@@ -401,17 +404,23 @@ export function MyTendersView({
 
         <div className="xl:col-span-5">
           {!activeTender ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
+            <div className="neon-surface rounded-2xl p-8 text-center text-sm text-[#7B8499]">
               Select a tender to manage team assignment, checklists, and AI copilot modules.
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-              <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200">
+            <motion.div
+              key={activeTender.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+              className="neon-surface rounded-2xl p-6 space-y-5"
+            >
+              <div className="flex items-start justify-between gap-3 pb-4 border-b border-white/[0.08]">
                 <div>
-                  <p className="text-xs font-mono text-[#1A73E8] font-medium">
+                  <p className="text-xs font-mono text-[#8AB4F8] font-medium">
                     {activeTender.referenceNumber}
                   </p>
-                  <h3 className="font-display text-lg font-bold text-[#202124] mt-1">
+                  <h3 className="font-display text-lg font-bold text-white mt-1">
                     {activeTender.title}
                   </h3>
                 </div>
@@ -420,10 +429,10 @@ export function MyTendersView({
                     type="button"
                     onClick={() => handleToggleReminder(activeTender)}
                     title="Toggle deadline reminder"
-                    className={`p-2 rounded-lg border ${
+                    className={`p-2 rounded-lg border transition-colors ${
                       activeTender.reminderEnabled
-                        ? 'border-[#D2E3FC] bg-[#E8F0FE] text-[#1A73E8]'
-                        : 'border-[#DADCE0] text-[#5F6368] hover:text-[#202124]'
+                        ? 'border-[#4285F4]/45 bg-[#4285F4]/18 text-[#8AB4F8]'
+                        : 'border-white/12 text-[#9AA0A6] hover:text-white'
                     }`}
                   >
                     {activeTender.reminderEnabled ? (
@@ -436,7 +445,7 @@ export function MyTendersView({
                     type="button"
                     onClick={() => handleDelete(activeTender)}
                     title="Remove tender"
-                    className="p-2 rounded-lg border border-[#DADCE0] text-[#5F6368] hover:text-[#D93025]"
+                    className="p-2 rounded-lg border border-white/12 text-[#9AA0A6] hover:text-[#F87171] hover:border-[#EA4335]/40 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -445,11 +454,11 @@ export function MyTendersView({
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-500 mb-1">Assigned Bid Owner</label>
+                  <label className="block text-[#9AA0A6] mb-1">Assigned Bid Owner</label>
                   <select
                     value={activeTender.assignedToUid || userProfile.uid}
                     onChange={(e) => handleAssigneeChange(activeTender, e.target.value)}
-                    className="w-full px-2.5 py-2 border border-slate-300 rounded-lg bg-white text-slate-800"
+                    className="w-full px-2.5 py-2 neon-input rounded-lg"
                   >
                     {members.length === 0 ? (
                       <option value={userProfile.uid}>{userProfile.displayName}</option>
@@ -463,8 +472,8 @@ export function MyTendersView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-500 mb-1">Estimated Value / EMD</label>
-                  <div className="px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 font-mono tabular-nums text-slate-900">
+                  <label className="block text-[#9AA0A6] mb-1">Estimated Value / EMD</label>
+                  <div className="px-3 py-2 border border-white/10 rounded-lg bg-white/[0.03] font-mono tabular-nums text-white">
                     INR {activeTender.estimatedValueLakhs ?? 0} L · EMD{' '}
                     {activeTender.emdAmountLakhs ?? 0} L
                   </div>
@@ -472,28 +481,28 @@ export function MyTendersView({
               </div>
 
               <div>
-                <h4 className="text-xs font-semibold text-[#202124] mb-2 flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-[#1A73E8]" />
+                <h4 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5 text-[#4ADE80]" />
                   Submission Document Checklist
                 </h4>
                 {(activeTender.checklist || []).length === 0 ? (
-                  <p className="text-xs text-[#5F6368]">No checklist items yet.</p>
+                  <p className="text-xs text-[#7B8499]">No checklist items yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {(activeTender.checklist || []).map((chk) => (
                       <label
                         key={chk.id}
-                        className="flex items-center gap-2.5 p-2.5 rounded-lg border border-[#DADCE0] hover:bg-[#F8F9FA] cursor-pointer text-xs"
+                        className="flex items-center gap-2.5 p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer text-xs transition-colors"
                       >
                         <input
                           type="checkbox"
                           checked={chk.completed}
                           onChange={() => handleToggleChecklist(activeTender, chk.id)}
-                          className="rounded border-[#DADCE0] text-[#1A73E8]"
+                          className="rounded border-white/20 bg-[#0D1119] accent-[#34A853]"
                         />
                         <span
                           className={
-                            chk.completed ? 'line-through text-[#80868B]' : 'text-[#202124]'
+                            chk.completed ? 'line-through text-[#7B8499]' : 'text-[#F1F3F4]'
                           }
                         >
                           {chk.label}
@@ -504,42 +513,42 @@ export function MyTendersView({
                 )}
               </div>
 
-              <div className="pt-3 border-t border-[#E8EAED]">
-                <p className="text-xs font-semibold text-[#202124] mb-2.5">
+              <div className="pt-3 border-t border-white/[0.08]">
+                <p className="text-xs font-semibold text-white mb-2.5">
                   Launch Copilot Module for this Tender
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => onSelectTender(activeTender.id, 'analyzer')}
-                    className="px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043]"
+                    className="px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg"
                   >
                     Document Analyzer
                   </button>
                   <button
                     type="button"
                     onClick={() => onSelectTender(activeTender.id, 'eligibility')}
-                    className="px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043]"
+                    className="px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg"
                   >
                     Eligibility Checker
                   </button>
                   <button
                     type="button"
                     onClick={() => onSelectTender(activeTender.id, 'coauthor')}
-                    className="px-3 py-2 text-xs font-medium bg-[#1A73E8] text-white rounded-lg hover:bg-[#1557B0]"
+                    className="px-3 py-2 text-xs font-medium neon-btn-primary rounded-lg"
                   >
                     AI Bid Writer
                   </button>
                   <button
                     type="button"
                     onClick={() => onSelectTender(activeTender.id, 'financial')}
-                    className="px-3 py-2 text-xs font-medium border border-[#DADCE0] rounded-lg hover:bg-[#F1F3F4] text-[#3C4043]"
+                    className="px-3 py-2 text-xs font-medium neon-btn-secondary rounded-lg"
                   >
                     Financial &amp; Risk
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

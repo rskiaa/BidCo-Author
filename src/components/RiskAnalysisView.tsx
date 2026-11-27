@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { ShieldAlert, Sparkles } from 'lucide-react';
 import { analyzeRisksWithAi } from '../lib/apiClient.ts';
-import { fetchDocumentChunks, logActivity, makeSafeId, saveRiskReport } from '../lib/firestoreStore.ts';
+import {
+  fetchDocumentChunks,
+  logActivity,
+  makeSafeId,
+  saveRiskReport,
+} from '../lib/firestoreStore.ts';
 import type {
   Organization,
   RiskReport,
@@ -10,6 +16,7 @@ import type {
   TenderRecord,
   UserProfile,
 } from '../types/procurement.ts';
+import { SPRING_SNAPPY } from './NeonPrimitives.tsx';
 
 interface RiskAnalysisViewProps {
   organization: Organization;
@@ -22,6 +29,13 @@ interface RiskAnalysisViewProps {
   onNotify: (msg: string) => void;
   onError: (msg: string) => void;
 }
+
+const SEVERITY_ACCENTS: Record<string, string> = {
+  Critical: '#EA4335',
+  High: '#F87171',
+  Medium: '#FBBC04',
+  Low: '#34A853',
+};
 
 export function RiskAnalysisView({
   organization,
@@ -104,12 +118,12 @@ export function RiskAnalysisView({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="neon-surface rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-lg font-bold text-slate-900">
+          <h2 className="font-display text-lg font-bold text-white">
             Contract &amp; Commercial Risk Intelligence
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-[#9AA0A6] mt-0.5">
             Detects liquidated damages traps, payment term holds, strict eligibility gates, and
             timeline exposure with clause citations.
           </p>
@@ -119,7 +133,7 @@ export function RiskAnalysisView({
           <select
             value={activeTender?.id || ''}
             onChange={(e) => onSelectTender(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white max-w-xs"
+            className="px-3 py-2 text-sm neon-input rounded-xl max-w-xs"
           >
             {tenders.map((t) => (
               <option key={t.id} value={t.id}>
@@ -127,67 +141,81 @@ export function RiskAnalysisView({
               </option>
             ))}
           </select>
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.97 }}
             disabled={!activeTender || running}
             onClick={handleRunRiskScan}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-[#1557B0] disabled:opacity-60 whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-4 py-2.5 neon-btn-primary text-sm font-medium rounded-xl disabled:opacity-60 whitespace-nowrap"
           >
             <Sparkles className="w-4 h-4 text-white" />
             {running ? 'Scanning Clauses...' : 'Run Risk Audit'}
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {!activeRiskReport ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2">
-          <ShieldAlert className="w-8 h-8 text-slate-400 mx-auto" />
-          <h3 className="font-display text-base font-semibold text-slate-900">
+        <div className="neon-surface rounded-2xl p-12 text-center space-y-2">
+          <ShieldAlert className="w-8 h-8 text-[#F87171] mx-auto" />
+          <h3 className="font-display text-base font-semibold text-white">
             No Risk Audit Generated Yet
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-[#9AA0A6] max-w-md mx-auto">
             Click “Run Risk Audit” to classify contractual, financial, and delivery risks across
             Low, Medium, High, and Critical levels.
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+          <div className="neon-surface rounded-2xl p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs text-slate-500">Overall Tender Risk Exposure</p>
-                <h3 className="font-display text-xl font-bold text-slate-900 mt-0.5">
+                <p className="text-xs text-[#9AA0A6]">Overall Tender Risk Exposure</p>
+                <h3 className="font-display text-xl font-bold text-white mt-0.5">
                   {activeRiskReport.overallRiskLevel} Risk Profile
                 </h3>
               </div>
 
-              <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-lg">
+              <div className="flex flex-wrap gap-1 p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl">
                 {(['All', 'Critical', 'High', 'Medium', 'Low'] as const).map((lvl) => (
                   <button
                     key={lvl}
                     type="button"
                     onClick={() => setSeverityFilter(lvl)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      severityFilter === lvl
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                    className={`relative px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                      severityFilter === lvl ? 'text-white' : 'text-[#9AA0A6] hover:text-white'
                     }`}
                   >
-                    {lvl}
+                    {severityFilter === lvl && (
+                      <motion.div
+                        layoutId="riskSeverityTab"
+                        transition={SPRING_SNAPPY}
+                        className="absolute inset-0 rounded-lg bg-[#4285F4]/22 border border-[#4285F4]/50"
+                      />
+                    )}
+                    <span className="relative z-10">{lvl}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm text-[#D2D8E2] leading-relaxed">
               {activeRiskReport.executiveSummary}
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/[0.08]">
               {severityCounts.map((s) => (
-                <div key={s.level} className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                  <p className="text-xs text-slate-500">{s.level}</p>
-                  <p className="font-mono tabular-nums text-xl font-bold text-slate-900 mt-0.5">
+                <div
+                  key={s.level}
+                  className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+                >
+                  <div
+                    className="h-[2px] w-8 rounded-full mb-2"
+                    style={{ backgroundColor: SEVERITY_ACCENTS[s.level] }}
+                    aria-hidden="true"
+                  />
+                  <p className="text-xs text-[#9AA0A6]">{s.level}</p>
+                  <p className="font-mono tabular-nums text-xl font-bold text-white mt-0.5">
                     {s.count}
                   </p>
                 </div>
@@ -199,40 +227,40 @@ export function RiskAnalysisView({
             {filteredRisks.map((risk) => (
               <div
                 key={risk.id}
-                className="bg-white border border-slate-200 rounded-xl p-5 space-y-2.5"
+                className="neon-surface-interactive rounded-2xl p-5 space-y-2.5"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2">
                     <span
                       className={`font-semibold ${
                         risk.severity === 'Critical' || risk.severity === 'High'
-                          ? 'text-[#D93025]'
+                          ? 'text-[#F87171]'
                           : risk.severity === 'Medium'
-                            ? 'text-[#B06000]'
-                            : 'text-[#1E8E3E]'
+                            ? 'text-[#FCD34D]'
+                            : 'text-[#4ADE80]'
                       }`}
                     >
                       {risk.severity} Severity
                     </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="text-[#5F6368]">{risk.category}</span>
+                    <span aria-hidden="true" className="text-white/25">
+                      ·
+                    </span>
+                    <span className="text-[#9AA0A6]">{risk.category}</span>
                   </div>
-                  <span className="font-mono text-[#1A73E8] font-medium">{risk.sourcePage}</span>
+                  <span className="font-mono text-[#8AB4F8] font-medium">{risk.sourcePage}</span>
                 </div>
 
-                <h4 className="font-display text-base font-semibold text-[#202124]">
-                  {risk.title}
-                </h4>
-                <p className="text-sm text-[#3C4043] leading-relaxed">{risk.description}</p>
+                <h4 className="font-display text-base font-semibold text-white">{risk.title}</h4>
+                <p className="text-sm text-[#C4CBD6] leading-relaxed">{risk.description}</p>
 
-                <div className="grid md:grid-cols-2 gap-4 pt-2 border-t border-[#E8EAED] text-xs">
+                <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-white/[0.08] text-xs">
                   <div>
-                    <span className="font-semibold text-[#202124]">Source Clause Evidence: </span>
-                    <span className="text-[#5F6368]">“{risk.evidenceQuote}”</span>
+                    <span className="font-semibold text-white">Source Clause Evidence: </span>
+                    <span className="text-[#9AA0A6]">“{risk.evidenceQuote}”</span>
                   </div>
                   <div>
-                    <span className="font-semibold text-[#1967D2]">Recommended Mitigation: </span>
-                    <span className="text-[#3C4043]">{risk.mitigation}</span>
+                    <span className="font-semibold text-[#8AB4F8]">Recommended Mitigation: </span>
+                    <span className="text-[#C4CBD6]">{risk.mitigation}</span>
                   </div>
                 </div>
               </div>

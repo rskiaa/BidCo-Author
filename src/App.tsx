@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { auth } from './lib/firebase.ts';
 import {
@@ -39,6 +40,7 @@ import { RiskAnalysisView } from './components/RiskAnalysisView.tsx';
 import { DocumentsVaultView } from './components/DocumentsVaultView.tsx';
 import { TeamWorkspaceView } from './components/TeamWorkspaceView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
+import { EASE_OUT_EXPO, GoogleBrandMark, SPRING_SNAPPY } from './components/NeonPrimitives.tsx';
 
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
@@ -146,30 +148,40 @@ export default function App() {
     if (nav) setActiveNav(nav);
   };
 
-  if (!authReady || orgLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-[#5F6368]">
-          <div className="w-5 h-5 border-2 border-[#1A73E8] border-t-transparent rounded-full animate-spin" />
-          Loading Bid Tender Writer workspace...
+  return (
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence>
+        {toast && <ToastBanner key="toast" toast={toast} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+
+      {!authReady || orgLoading ? (
+        <div className="min-h-screen bg-[#090B10] google-neon-grid flex items-center justify-center p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
+            className="neon-surface rounded-2xl px-7 py-6 flex flex-col items-center gap-4 text-center"
+          >
+            <div className="relative">
+              <GoogleBrandMark size={44} />
+              <div className="absolute -inset-2 rounded-2xl border border-[#4285F4]/30 animate-ping opacity-30 pointer-events-none" />
+            </div>
+            <div>
+              <p className="font-display text-sm font-semibold text-[#F1F3F4]">
+                Bid Tender Writer
+              </p>
+              <p className="text-xs text-[#9AA0A6] mt-1">
+                Syncing procurement workspace...
+              </p>
+            </div>
+            <div className="w-40 h-1 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full w-full google-spectrum-bar" />
+            </div>
+          </motion.div>
         </div>
-      </div>
-    );
-  }
-
-  if (!firebaseUser) {
-    return (
-      <>
-        {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
+      ) : !firebaseUser ? (
         <AuthScreen onError={showError} />
-      </>
-    );
-  }
-
-  if (!firebaseUser.emailVerified) {
-    return (
-      <>
-        {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
+      ) : !firebaseUser.emailVerified ? (
         <EmailVerifyGate
           email={firebaseUser.email || ''}
           onError={showError}
@@ -187,15 +199,8 @@ export default function App() {
             }
           }}
         />
-      </>
-    );
-  }
-
-  if (!userProfile?.orgId || !organization) {
-    return (
-      <>
-        {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
-        {userProfile ? (
+      ) : !userProfile?.orgId || !organization ? (
+        userProfile ? (
           <OrganizationOnboarding
             userProfile={userProfile}
             onError={showError}
@@ -205,163 +210,168 @@ export default function App() {
               showNotice(`Workspace "${org.name}" ready.`);
             }}
           />
-        ) : null}
-      </>
-    );
-  }
+        ) : null
+      ) : (
+        <SidebarLayout
+          activeNav={activeNav}
+          onSelectNav={setActiveNav}
+          organization={organization}
+          userProfile={userProfile}
+          notifications={notifications}
+          onMarkNotificationRead={(id) =>
+            markNotificationRead(organization.id, id).catch((e) => showError(e.message))
+          }
+          onSignOut={() => signOut(auth)}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeNav}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+            >
+              {activeNav === 'dashboard' && (
+                <DashboardView
+                  organization={organization}
+                  tenders={tenders}
+                  analyses={analyses}
+                  eligibilities={eligibilities}
+                  proposals={proposals}
+                  risks={risks}
+                  onNavigate={setActiveNav}
+                  onSelectTender={handleSelectTender}
+                />
+              )}
 
-  return (
-    <>
-      {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
-      <SidebarLayout
-        activeNav={activeNav}
-        onSelectNav={setActiveNav}
-        organization={organization}
-        userProfile={userProfile}
-        notifications={notifications}
-        onMarkNotificationRead={(id) =>
-          markNotificationRead(organization.id, id).catch((e) => showError(e.message))
-        }
-        onSignOut={() => signOut(auth)}
-      >
-        {activeNav === 'dashboard' && (
-          <DashboardView
-            organization={organization}
-            tenders={tenders}
-            analyses={analyses}
-            eligibilities={eligibilities}
-            proposals={proposals}
-            risks={risks}
-            onNavigate={setActiveNav}
-            onSelectTender={handleSelectTender}
-          />
-        )}
+              {activeNav === 'discover' && (
+                <DiscoverTendersView
+                  organization={organization}
+                  userProfile={userProfile}
+                  savedTenders={tenders}
+                  onNotify={showNotice}
+                  onError={showError}
+                  onOpenTender={handleSelectTender}
+                />
+              )}
 
-        {activeNav === 'discover' && (
-          <DiscoverTendersView
-            organization={organization}
-            userProfile={userProfile}
-            savedTenders={tenders}
-            onNotify={showNotice}
-            onError={showError}
-            onOpenTender={handleSelectTender}
-          />
-        )}
+              {activeNav === 'my_tenders' && (
+                <MyTendersView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  members={members}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={handleSelectTender}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'my_tenders' && (
-          <MyTendersView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            members={members}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={handleSelectTender}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'analyzer' && (
+                <DocumentAnalyzerView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  analyses={analyses}
+                  documents={documents}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={(id) => setSelectedTenderId(id)}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'analyzer' && (
-          <DocumentAnalyzerView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            analyses={analyses}
-            documents={documents}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={(id) => setSelectedTenderId(id)}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'eligibility' && (
+                <EligibilityCheckerView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  analyses={analyses}
+                  eligibilities={eligibilities}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={(id) => setSelectedTenderId(id)}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'eligibility' && (
-          <EligibilityCheckerView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            analyses={analyses}
-            eligibilities={eligibilities}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={(id) => setSelectedTenderId(id)}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'coauthor' && (
+                <ProposalCoAuthorView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  analyses={analyses}
+                  proposals={proposals}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={(id) => setSelectedTenderId(id)}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'coauthor' && (
-          <ProposalCoAuthorView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            analyses={analyses}
-            proposals={proposals}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={(id) => setSelectedTenderId(id)}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'financial' && (
+                <FinancialIntelligenceView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  financials={financials}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={(id) => setSelectedTenderId(id)}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'financial' && (
-          <FinancialIntelligenceView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            financials={financials}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={(id) => setSelectedTenderId(id)}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'risk' && (
+                <RiskAnalysisView
+                  organization={organization}
+                  userProfile={userProfile}
+                  tenders={tenders}
+                  analyses={analyses}
+                  risks={risks}
+                  selectedTenderId={selectedTenderId}
+                  onSelectTender={(id) => setSelectedTenderId(id)}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'risk' && (
-          <RiskAnalysisView
-            organization={organization}
-            userProfile={userProfile}
-            tenders={tenders}
-            analyses={analyses}
-            risks={risks}
-            selectedTenderId={selectedTenderId}
-            onSelectTender={(id) => setSelectedTenderId(id)}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'documents' && (
+                <DocumentsVaultView
+                  organization={organization}
+                  documents={documents}
+                  proposals={proposals}
+                  tenders={tenders}
+                  onOpenTender={handleSelectTender}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'documents' && (
-          <DocumentsVaultView
-            organization={organization}
-            documents={documents}
-            proposals={proposals}
-            tenders={tenders}
-            onOpenTender={handleSelectTender}
-            onError={showError}
-          />
-        )}
+              {activeNav === 'team' && (
+                <TeamWorkspaceView
+                  organization={organization}
+                  userProfile={userProfile}
+                  members={members}
+                  activities={activities}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
 
-        {activeNav === 'team' && (
-          <TeamWorkspaceView
-            organization={organization}
-            userProfile={userProfile}
-            members={members}
-            activities={activities}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
-
-        {activeNav === 'settings' && (
-          <SettingsView
-            organization={organization}
-            userProfile={userProfile}
-            onNotify={showNotice}
-            onError={showError}
-          />
-        )}
-      </SidebarLayout>
-    </>
+              {activeNav === 'settings' && (
+                <SettingsView
+                  organization={organization}
+                  userProfile={userProfile}
+                  onNotify={showNotice}
+                  onError={showError}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </SidebarLayout>
+      )}
+    </MotionConfig>
   );
 }
 
@@ -373,32 +383,35 @@ function ToastBanner({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed bottom-5 right-5 z-50 max-w-md w-full sm:w-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 14, scale: 0.96 }}
+      transition={SPRING_SNAPPY}
+      className="fixed bottom-5 right-5 z-50 max-w-md w-[calc(100%-2.5rem)] sm:w-auto"
+    >
       <div
-        className={`flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-xs font-medium ${
+        className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border text-xs font-medium backdrop-blur-xl ${
           toast.type === 'error'
-            ? 'bg-[#FCE8E6] text-[#A50E0E] border-[#F6AEA9]'
-            : 'bg-[#202124] text-white border-[#3C4043]'
+            ? 'bg-[#261114]/95 text-[#FCA5A5] border-[#EA4335]/40 shadow-[0_12px_32px_-8px_rgba(234,67,53,0.45)]'
+            : 'bg-[#11151E]/95 text-[#F1F3F4] border-[#34A853]/40 shadow-[0_12px_32px_-8px_rgba(52,168,83,0.35)]'
         }`}
       >
         {toast.type === 'error' ? (
-          <AlertTriangle className="w-4 h-4 text-[#D93025] shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-[#F87171] shrink-0 mt-0.5" />
         ) : (
-          <CheckCircle2 className="w-4 h-4 text-[#34A853] shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
         )}
         <p className="leading-relaxed flex-1">{toast.message}</p>
         <button
           type="button"
           onClick={onClose}
-          className={`shrink-0 ${
-            toast.type === 'error'
-              ? 'text-[#A50E0E]/70 hover:text-[#A50E0E]'
-              : 'text-[#9AA0A6] hover:text-white'
-          }`}
+          className="shrink-0 text-[#9AA0A6] hover:text-white transition-colors"
+          aria-label="Dismiss notification"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
