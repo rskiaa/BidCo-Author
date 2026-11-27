@@ -1,5 +1,5 @@
 # Bid Tender Writer — AI-Powered Government Tender & Bidding Copilot
-
+Publish link: https://bidco-author.ai.studio/
 Bid Tender Writer is a full-stack SaaS platform built with React, TypeScript, Tailwind CSS, Express, Google Gemini (`@google/genai`), and Firebase (Authentication & Firestore).
 
 ## Core Capabilities
